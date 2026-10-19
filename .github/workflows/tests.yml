@@ -1,0 +1,17 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"  # same as Raspberry Pi OS Bookworm
+      - run: pip install pytest
+      - run: python -m pytest -q pi/tests pc-helper/tests
+      - run: bash -n pi/setup/install.sh && bash -n pi/setup/usb-gadget.sh

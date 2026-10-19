@@ -1,0 +1,14 @@
+[Unit]
+Description=Desk presence: lock the PC when you walk away
+After=desk-presence-gadget.service
+Wants=desk-presence-gadget.service
+
+[Service]
+User=__USER__
+WorkingDirectory=/opt/desk-presence
+ExecStart=/usr/bin/python3 -m desk_presence --config __HOME__/desk-presence/config.toml run
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

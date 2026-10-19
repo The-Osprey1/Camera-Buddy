@@ -1,0 +1,11 @@
+[Unit]
+Description=Desk presence: USB keyboard and helper link
+After=systemd-modules-load.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/opt/desk-presence/setup/usb-gadget.sh
+
+[Install]
+WantedBy=multi-user.target
