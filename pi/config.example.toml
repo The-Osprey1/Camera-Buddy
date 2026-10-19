@@ -1,0 +1,37 @@
+# Desk presence settings. Copy to ~/desk-presence/config.toml and change what you like.
+# Anything left out uses the default shown here.
+
+# Practice mode writes down what it would do and presses no keys.
+# Leave it on for the first week, read the log (`python3 -m desk_presence log`),
+# adjust the timings below, then set it to false.
+practice_mode = true
+
+event_log = "~/desk-presence/events.jsonl"
+
+# How long the pause switch (Ctrl+Alt+P on the PC, or the optional button) pauses for.
+pause_seconds = 3600
+
+# Raspberry Pi pin (BCM numbering) for an optional pause button wired to ground. 0 = no button.
+pause_button_pin = 0
+
+[presence]
+# Your body must be out of view this long before the PC locks.
+away_seconds = 5.0
+# A body must be seen this long to count as "back".
+return_confirm_seconds = 0.5
+# How sure the model must be of a body point (0 to 1).
+min_keypoint_score = 0.3
+# Head and shoulder points needed for a body to count.
+min_upper_body_points = 3
+# Shoulders this far above your seated height (share of picture height) = stood up.
+stand_rise = 0.15
+# Below this brightness it does nothing at all. 0 turns the check off.
+min_lux = 5.0
+
+[second_person]
+# "warn" (tell the PC helper), "lock" (also lock) or "off".
+action = "warn"
+# How big they must be compared with you, so people far behind you don't count.
+min_size_ratio = 0.25
+seconds = 2.0
+cooldown_seconds = 60.0
