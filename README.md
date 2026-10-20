@@ -55,6 +55,22 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
    Sit down, stand up, walk away. It prints `seated`, `stood_up`, `away` or `too_dark` once a second. The first start uploads the model to the camera, which can take a minute. Start the service again afterwards with `sudo systemctl start desk-presence`.
 4. Plug the splitter's data side into the PC. Windows should find a new keyboard and a new "USB Serial Device".
 
+### No screen or keyboard on the Pi?
+
+The Pi can do steps 1 and 2 by itself from the SD card:
+
+1. Write **Raspberry Pi OS Lite (64-bit)** to the card with Raspberry Pi Imager. In its settings, set the name to `deskcam`, pick a username and password, enter your Wi-Fi, and turn on SSH (remote login).
+2. Put the card back into your computer. Copy the `pi` folder onto the card's boot drive and rename the copy `desk-presence`.
+3. Open `user-data` on the boot drive in a text editor and add these two lines at the end. If the file already has a `runcmd:` line, add only the second line, under it.
+
+   ```
+   runcmd:
+   - [bash, /boot/firmware/desk-presence/setup/firstboot.sh]
+   ```
+
+4. Put the card in the Pi and switch it on. It waits for the Wi-Fi, updates itself, installs everything and restarts, which can take half an hour. It writes its progress to `desk-presence-setup.log` on the boot drive.
+5. From the PC, log in with `ssh yourname@deskcam.local` and carry on from step 3.
+
 ## Setting up the PC helper (optional, recommended)
 
 Locking works without it. The helper adds the Ctrl + Alt + P pause switch, the second-person warning beep, and tells the Pi when the PC is already locked.

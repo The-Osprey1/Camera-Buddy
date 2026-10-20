@@ -14,4 +14,4 @@ jobs:
           python-version: "3.11"  # same as Raspberry Pi OS Bookworm
       - run: pip install pytest
       - run: python -m pytest -q pi/tests pc-helper/tests
-      - run: bash -n pi/setup/install.sh && bash -n pi/setup/usb-gadget.sh
+      - run: bash -n pi/setup/install.sh && bash -n pi/setup/usb-gadget.sh && bash -n pi/setup/firstboot.sh
