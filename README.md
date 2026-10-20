@@ -61,11 +61,11 @@ The Pi can do steps 1 and 2 by itself from the SD card:
 
 1. Write **Raspberry Pi OS Lite (64-bit)** to the card with Raspberry Pi Imager. In its settings, set the name to `deskcam`, pick a username and password, enter your Wi-Fi, and turn on SSH (remote login).
 2. Put the card back into your computer. Copy the `pi` folder onto the card's boot drive and rename the copy `desk-presence`.
-3. Open `user-data` on the boot drive in a text editor and add these two lines at the end. If the file already has a `runcmd:` line, add only the second line, under it.
+3. Open `user-data` on the boot drive in a text editor and add these two lines at the end, with your username in place of `yourname`. If the file already has a `runcmd:` line, add only the second line at the end of its list, indented like the lines above it.
 
    ```
    runcmd:
-   - [bash, /boot/firmware/desk-presence/setup/firstboot.sh]
+   - [bash, /boot/firmware/desk-presence/setup/firstboot.sh, yourname]
    ```
 
 4. Put the card in the Pi and switch it on. It waits for the Wi-Fi, updates itself, installs everything and restarts, which can take half an hour. It writes its progress to `desk-presence-setup.log` on the boot drive.
