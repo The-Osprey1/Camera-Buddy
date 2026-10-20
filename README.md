@@ -52,7 +52,7 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
    cd /opt/desk-presence && python3 -m desk_presence camera-test
    ```
 
-   Sit down, stand up, walk away. It prints `seated`, `stood_up`, `away` or `too_dark` once a second. The first start uploads the model to the camera, which can take a minute. Start the service again afterwards with `sudo systemctl start desk-presence`.
+   Sit down, stand up, walk away. It prints `seated`, `stood_up`, `away` or `too_dark` once a second, and `people=1` while you're on your own. The first start uploads the model to the camera, which can take a minute. Start the service again afterwards with `sudo systemctl start desk-presence`.
 4. Plug the splitter's data side into the PC. Windows should find a new keyboard and a new "USB Serial Device".
 
 ### No screen or keyboard on the Pi?

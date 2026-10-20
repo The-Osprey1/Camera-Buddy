@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from .config import PresenceSettings, SecondPersonSettings
-from .pose import Frame, Person
+from .pose import Frame, Person, same_person
 
 
 class State(str, Enum):
@@ -31,16 +31,22 @@ class PresenceTracker:
         # Your usual seated shoulder height, learned while you sit.
         self.seated_shoulder_y: float | None = None
 
-    def _bodies(self, frame: Frame) -> list[Person]:
+    def bodies(self, frame: Frame) -> list[Person]:
+        """The people in view, biggest first, each counted once."""
         score = self.p.min_keypoint_score
-        bodies = [b for b in frame.people if b.upper_body_points(score) >= self.p.min_upper_body_points]
-        return sorted(bodies, key=lambda b: b.area(score), reverse=True)
+        found = [b for b in frame.people if b.upper_body_points(score) >= self.p.min_upper_body_points]
+        found.sort(key=lambda b: b.area(score), reverse=True)
+        bodies: list[Person] = []
+        for b in found:
+            if not any(same_person(b, kept, score) for kept in bodies):
+                bodies.append(b)
+        return bodies
 
     def update(self, frame: Frame) -> Observation:
         if self.p.min_lux > 0 and frame.lux is not None and frame.lux < self.p.min_lux:
             return Observation(frame.time, State.TOO_DARK)
 
-        bodies = self._bodies(frame)
+        bodies = self.bodies(frame)
         if not bodies:
             return Observation(frame.time, State.AWAY)
 

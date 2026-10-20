@@ -38,10 +38,14 @@ def main() -> None:
             if frame.time - last >= 1:
                 last = frame.time
                 score = settings.presence.min_keypoint_score
-                sizes = [round(p.area(score), 3) for p in frame.people]
+                bodies = tracker.bodies(frame)
+                sizes = [round(b.area(score), 3) for b in bodies]
+                at = [tuple(round(v, 2) for v in b.middle(score)) for b in bodies]
+                brightness = "?" if frame.lux is None else round(frame.lux)
                 print(
-                    f"{time.strftime('%H:%M:%S')}  {obs.state.value:<9} people={len(frame.people)} "
-                    f"sizes={sizes} brightness={frame.lux} second_person={obs.second_person}"
+                    f"{time.strftime('%H:%M:%S')}  {obs.state.value:<9} people={len(bodies)} "
+                    f"(model saw {len(frame.people)}) sizes={sizes} at={at} "
+                    f"brightness={brightness} second_person={obs.second_person}"
                 )
         return
 
