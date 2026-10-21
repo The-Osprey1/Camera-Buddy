@@ -34,9 +34,12 @@ CAMERA_START_SECONDS = 150.0
 # No results for this long means the camera has stopped.
 CAMERA_STALL_SECONDS = 10.0
 
-# A PC's USB port can't power a Pi 4 with the camera: the PC cuts power to its
-# USB ports, and can take your mouse and keyboard with it.
-OWN_SUPPLY = "Power the Pi from its own supply (5 V, 3 A), never from the PC."
+# Many PC ports can't power a Pi 4 with the camera, and a PC that cuts power to its
+# USB ports can take your mouse and keyboard with it.
+OWN_SUPPLY = (
+    "Power the Pi from its own supply (5 V, 3 A), through a USB-C power and data splitter "
+    "if it's plugged into the PC."
+)
 
 RESEAT_CABLE = (
     "Switch the Pi off (sudo shutdown now), unplug it, and press the camera's ribbon cable "

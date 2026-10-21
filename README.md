@@ -31,7 +31,7 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
 ## What you need
 
 - Raspberry Pi 4B and the Raspberry Pi AI Camera
-- A **USB-C power and data splitter**, so the Pi's own 5V/3A supply powers it and only the data line goes to the PC. **Never power the Pi from the PC's USB port:** a Pi 4 with the camera draws more than the port can give, and the PC cuts power to its USB ports, which can take your mouse and keyboard with it.
+- A **USB-C power and data splitter** (best), so the Pi's own 5V/3A supply powers it and only the data line goes to the PC. Some PCs can power the Pi through a good USB-C cable instead, and `desk-check` tells you whether the power is steady. But if your mouse and keyboard stop working when you plug the Pi in, unplug it at once: that port or cable can't give it enough power. Powered by the PC, the Pi also switches off suddenly whenever the PC does, which now and then can damage what's on its SD card.
 - A Windows PC. On the PC, set sleep to "Never" when plugged in (Settings, System, Power), because sleep pauses your programs and locking doesn't.
 
 ## Setting up the Pi
@@ -45,7 +45,7 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
    ```
 
    This installs the camera software, turns on keyboard mode for the USB-C port, puts your settings in `~/desk-presence/config.toml` and starts the program at every boot.
-3. Plug the splitter's power side into the Pi's own supply and its data side into the PC. Windows should find a new keyboard and a new "USB Serial Device".
+3. Plug the splitter's power side into the Pi's own supply and its data side into the PC (or plug the Pi straight into the PC, see "What you need"). Windows should find a new keyboard and a new "USB Serial Device".
 4. Check everything with one command (it presses nothing):
 
    ```
@@ -76,18 +76,19 @@ The Pi can do steps 1 and 2 by itself from the SD card:
 
 ## Setting up the PC helper (optional, recommended)
 
-Locking works without it. The helper adds the Ctrl + Alt + P pause switch, the second-person warning beep, and tells the Pi when the PC is already locked.
+Locking works without it. The helper adds the Ctrl + Alt + P pause switch and the beeps, tells the Pi when the PC is already locked, and keeps the log that shows whether each practice "would have locked" was right.
 
 1. If the PC has no Python yet, install it from python.org (Anaconda works too).
 2. Copy the `pc-helper` folder somewhere on the PC.
-3. Try it: double-click `start-helper.cmd` in that folder. It finds Python, installs pyserial the first time, and should say "Connected to the Pi on COM...". (By hand: `py -m pip install pyserial`, then `py desk_helper.py`.)
-4. To start it at every login without a window: press Windows + R, type `shell:startup`, and in that folder create a shortcut to `pyw C:\path\to\desk_helper.py`.
+3. Double-click `start-helper.cmd` in that folder. It finds Python, installs pyserial the first time, adds the helper to your Startup apps (so it runs without a window every time you log in) and starts it. It should end with "All set: it hears the Pi". After an update, double-click it again to restart the helper.
 
-Its log is in `%LOCALAPPDATA%\DeskPresence\helper.log`.
+Its log is `helper.log` in the same folder: every message from the Pi, when the PC was locked and unlocked, how long before each lock you last used the keyboard or mouse, and each time you came back after more than 2 minutes away from them.
+
+To run it in a window instead: `py desk_helper.py`. To stop it and take it out of your Startup apps: `py desk_helper.py --uninstall` (or turn it off in Task Manager, under Startup apps).
 
 ## Practice week, then going live
 
-Each day, check what it would have done:
+Each day, check what it would have done. On the PC, `helper.log` lists each "would have locked now" with how long before it you last used the keyboard or mouse: a few seconds means you were still there. On the Pi:
 
 ```
 cd /opt/desk-presence && python3 -m desk_presence --config ~/desk-presence/config.toml log
