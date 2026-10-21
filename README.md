@@ -78,9 +78,9 @@ The Pi can do steps 1 and 2 by itself from the SD card:
 
 Locking works without it. The helper adds the Ctrl + Alt + P pause switch, the second-person warning beep, and tells the Pi when the PC is already locked.
 
-1. Install Python from python.org, then in a terminal: `py -m pip install pyserial`
+1. If the PC has no Python yet, install it from python.org (Anaconda works too).
 2. Copy the `pc-helper` folder somewhere on the PC.
-3. Try it: `py desk_helper.py`. It should say "Connected to the Pi on COM...".
+3. Try it: double-click `start-helper.cmd` in that folder. It finds Python, installs pyserial the first time, and should say "Connected to the Pi on COM...". (By hand: `py -m pip install pyserial`, then `py desk_helper.py`.)
 4. To start it at every login without a window: press Windows + R, type `shell:startup`, and in that folder create a shortcut to `pyw C:\path\to\desk_helper.py`.
 
 Its log is in `%LOCALAPPDATA%\DeskPresence\helper.log`.
