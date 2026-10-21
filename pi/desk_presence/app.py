@@ -150,6 +150,7 @@ class DeskPresence:
                     self.helper.send(protocol.FACE_REFUSED)
             elif decision.action == "not_recognized":
                 self.events.write("not_recognized", **decision.details)
+                self.helper.send(protocol.NOT_RECOGNIZED)
 
         if (
             self.unlock.needs_pin

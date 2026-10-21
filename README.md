@@ -133,7 +133,7 @@ Needs Raspberry Pi OS Trixie or newer (OpenCV 4.8+).
 The Pi and the helper only ever send these lines, and ignore anything else:
 
 - PC to Pi: `LOCKED`, `LOCK_SCREEN` (the real lock screen) or `UNLOCKED` (every 2 seconds), `PAUSE` (toggle), and `PIN` followed by 4 to 20 letters and digits (only after the Pi asks, and only what you typed into the PIN box)
-- Pi to PC: `PAUSED`, `RESUMED`, `WARN SECOND_PERSON`, `LOCKING`, `WOULD_LOCK`, `UNLOCKING`, `WOULD_UNLOCK`, `UNLOCK_FAILED`, `FACE_REFUSED`, `NEED_PIN`, `PIN_OK`
+- Pi to PC: `PAUSED`, `RESUMED`, `WARN SECOND_PERSON`, `LOCKING`, `WOULD_LOCK`, `UNLOCKING`, `WOULD_UNLOCK`, `UNLOCK_FAILED`, `FACE_REFUSED`, `NOT_RECOGNIZED`, `NEED_PIN`, `PIN_OK`
 
 ## Running the tests
 

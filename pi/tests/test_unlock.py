@@ -306,7 +306,7 @@ def test_practice_stranger_is_not_recognized(tmp_path):
     play(app, t, 35, [person()])
     names = [e["event"] for e in events_in(tmp_path / "events.jsonl")]
     assert "would_unlock" not in names and names.count("not_recognized") == 1
-    assert helper.sent == [protocol.WOULD_LOCK]
+    assert helper.sent == [protocol.WOULD_LOCK, protocol.NOT_RECOGNIZED]
 
 
 class LivePC(FakeHelper):

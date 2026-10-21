@@ -72,6 +72,8 @@ FROM_PI = {
         "It's off until you unlock by hand once",
         (1200, 150), (400, 300),
     ),
+    # No beep: you may simply not be looking at the screen yet.
+    "NOT_RECOGNIZED": ("Face unlock didn't recognize you after you sat down",),
     "NEED_PIN": ("The Pi asked for your PIN, for face unlock",),
     "PIN_OK": ("The Pi has your PIN now (kept in its memory only)",),
 }
