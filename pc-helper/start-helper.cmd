@@ -6,7 +6,8 @@ rem It finds Python: the py launcher from python.org, Anaconda, or python.
 title Desk presence helper
 cd /d "%~dp0"
 set "PY="
-where py >nul 2>nul && set "PY=py"
+rem The py launcher can outlive the Python it came with, so check it starts one.
+py -c "import sys" >nul 2>nul && set "PY=py"
 if not defined PY if exist "%USERPROFILE%\anaconda3\python.exe" set "PY=%USERPROFILE%\anaconda3\python.exe"
 if not defined PY if exist "%ProgramData%\anaconda3\python.exe" set "PY=%ProgramData%\anaconda3\python.exe"
 if not defined PY set "PY=python"
