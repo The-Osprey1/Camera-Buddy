@@ -31,7 +31,7 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
 ## What you need
 
 - Raspberry Pi 4B and the Raspberry Pi AI Camera
-- A **USB-C power and data splitter**. A PC's USB port can't reliably power a Pi 4 plus camera, so a proper 5V/3A supply powers the Pi and only the data line goes to the PC.
+- A **USB-C power and data splitter**. A PC's USB port may not power a Pi 4 plus camera reliably (`desk-check` tells you if the power dips), so a proper 5V/3A supply powers the Pi and only the data line goes to the PC.
 - A Windows PC. On the PC, set sleep to "Never" when plugged in (Settings, System, Power), because sleep pauses your programs and locking doesn't.
 
 ## Setting up the Pi
@@ -45,15 +45,18 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
    ```
 
    This installs the camera software, turns on keyboard mode for the USB-C port, puts your settings in `~/desk-presence/config.toml` and starts the program at every boot.
-3. Check what the camera sees (it presses nothing):
+3. Plug the splitter's data side into the PC. Windows should find a new keyboard and a new "USB Serial Device".
+4. Check everything with one command (it presses nothing):
 
    ```
-   sudo systemctl stop desk-presence
-   cd /opt/desk-presence && python3 -m desk_presence camera-test
+   desk-check
    ```
 
-   Sit down, stand up, walk away. It prints `seated`, `stood_up`, `away` or `too_dark` once a second, and `people=1` while you're on your own. The first start uploads the model to the camera, which can take a minute. Start the service again afterwards with `sudo systemctl start desk-presence`.
-4. Plug the splitter's data side into the PC. Windows should find a new keyboard and a new "USB Serial Device".
+   It tells you on screen when to sit, stand up, walk away and come back, and beeps when it's time for the next step. Then it gives OK or PROBLEM for the power, for how the camera saw each of those, and for keyboard mode, with what to change. The results are saved in `~/desk-presence/checks/`. The first start of the camera uploads the model to it, which can take a minute.
+
+   When the Pi is online, `desk-check` first installs the newest version of this program from GitHub, so after a fix you just run it again. To update without checking, run `sudo /opt/desk-presence/setup/update.sh`.
+
+   To watch the camera's raw results instead, once a second: `sudo systemctl stop desk-presence`, then `cd /opt/desk-presence && python3 -m desk_presence camera-test`. Start the program again afterwards with `sudo systemctl start desk-presence`.
 
 ### No screen or keyboard on the Pi?
 

@@ -16,24 +16,38 @@ USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)" || {
 }
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 
-echo "Installing camera and helper software..."
-apt-get update
 # python3-opencv and python3-munkres are needed by picamera2's decoder for the pose model's results.
-apt-get install -y imx500-all python3-picamera2 python3-opencv python3-munkres \
-    python3-serial python3-gpiozero python3-numpy
+PACKAGES=(imx500-all python3-picamera2 python3-opencv python3-munkres python3-serial python3-gpiozero python3-numpy)
+MISSING=no
+for p in "${PACKAGES[@]}"; do
+    dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "ok installed" || MISSING=yes
+done
+# Skipped when everything is already there, so updates (setup/update.sh) are quick.
+if [ "$MISSING" = yes ]; then
+    echo "Installing camera and helper software..."
+    apt-get update
+    apt-get install -y "${PACKAGES[@]}"
+fi
 
 echo "Copying the program to /opt/desk-presence..."
 mkdir -p /opt/desk-presence
+rm -rf /opt/desk-presence/desk_presence /opt/desk-presence/setup
 cp -r "$HERE/desk_presence" "$HERE/setup" /opt/desk-presence/
-chmod +x /opt/desk-presence/setup/usb-gadget.sh
+chmod +x /opt/desk-presence/setup/*.sh /opt/desk-presence/setup/desk-check
+# desk-check may be the one running this (through update.sh), so swap it in one
+# step instead of writing over it.
+cp /opt/desk-presence/setup/desk-check /usr/local/bin/desk-check.new
+mv /usr/local/bin/desk-check.new /usr/local/bin/desk-check
 
 echo "Turning on USB keyboard mode on the USB-C port..."
 BOOT_CONFIG=/boot/firmware/config.txt
 [ -f "$BOOT_CONFIG" ] || BOOT_CONFIG=/boot/config.txt
 # Match this exact line: newer config.txt files already have a different dwc2 line
 # for the Compute Module 5. The [all] stops it landing inside a [cm4] or [cm5] section.
+RESTART_NEEDED=no
 if ! grep -q '^dtoverlay=dwc2,dr_mode=peripheral' "$BOOT_CONFIG"; then
     printf '\n[all]\n# Desk presence: USB keyboard mode on the USB-C port\ndtoverlay=dwc2,dr_mode=peripheral\n' >> "$BOOT_CONFIG"
+    RESTART_NEEDED=yes
 fi
 printf 'dwc2\nlibcomposite\n' > /etc/modules-load.d/desk-presence.conf
 cp "$HERE/setup/99-desk-presence.rules" /etc/udev/rules.d/
@@ -52,8 +66,15 @@ sed -e "s|__USER__|$USER_NAME|" -e "s|__HOME__|$USER_HOME|" \
     "$HERE/setup/desk-presence.service" > /etc/systemd/system/desk-presence.service
 systemctl daemon-reload
 systemctl enable desk-presence-gadget.service desk-presence.service
+# If it's already running, switch it over to the new copy.
+systemctl try-restart desk-presence.service
 
 echo
-echo "Done. Restart the Pi (sudo reboot) to switch on keyboard mode."
-echo "It starts in practice mode: it only writes down what it would do."
+if [ "$RESTART_NEEDED" = yes ]; then
+    echo "Done. Restart the Pi (sudo reboot) to switch on keyboard mode."
+    echo "It starts in practice mode: it only writes down what it would do."
+else
+    echo "Done."
+fi
 echo "Settings: $USER_HOME/desk-presence/config.toml"
+echo "To check everything works, type: desk-check"
