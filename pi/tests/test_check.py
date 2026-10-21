@@ -125,7 +125,7 @@ def test_next_step_points_at_the_first_problem():
         check.Result(PROBLEM, "Standing up", "it lost sight of you"),
     ]
     assert check.next_step(results) == "Next: sort out the standing up problem, then type desk-check again."
-    assert check.next_step(results[:2]).startswith("Next: connect the Pi's USB-C port")
+    assert check.next_step(results[:2]).startswith("Next: connect the Pi to your PC through a USB-C power")
     assert check.next_step(results[:1]) == "Everything works."
 
 

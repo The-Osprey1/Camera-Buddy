@@ -31,7 +31,7 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
 ## What you need
 
 - Raspberry Pi 4B and the Raspberry Pi AI Camera
-- A **USB-C power and data splitter**. A PC's USB port may not power a Pi 4 plus camera reliably (`desk-check` tells you if the power dips), so a proper 5V/3A supply powers the Pi and only the data line goes to the PC.
+- A **USB-C power and data splitter**, so the Pi's own 5V/3A supply powers it and only the data line goes to the PC. **Never power the Pi from the PC's USB port:** a Pi 4 with the camera draws more than the port can give, and the PC cuts power to its USB ports, which can take your mouse and keyboard with it.
 - A Windows PC. On the PC, set sleep to "Never" when plugged in (Settings, System, Power), because sleep pauses your programs and locking doesn't.
 
 ## Setting up the Pi
@@ -45,7 +45,7 @@ And if it does lock by mistake: it's just Windows + L. Type your PIN as usual.
    ```
 
    This installs the camera software, turns on keyboard mode for the USB-C port, puts your settings in `~/desk-presence/config.toml` and starts the program at every boot.
-3. Plug the splitter's data side into the PC. Windows should find a new keyboard and a new "USB Serial Device".
+3. Plug the splitter's power side into the Pi's own supply and its data side into the PC. Windows should find a new keyboard and a new "USB Serial Device".
 4. Check everything with one command (it presses nothing):
 
    ```

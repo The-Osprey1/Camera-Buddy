@@ -34,6 +34,10 @@ CAMERA_START_SECONDS = 150.0
 # No results for this long means the camera has stopped.
 CAMERA_STALL_SECONDS = 10.0
 
+# A PC's USB port can't power a Pi 4 with the camera: the PC cuts power to its
+# USB ports, and can take your mouse and keyboard with it.
+OWN_SUPPLY = "Power the Pi from its own supply (5 V, 3 A), never from the PC."
+
 RESEAT_CABLE = (
     "Switch the Pi off (sudo shutdown now), unplug it, and press the camera's ribbon cable "
     "firmly into both connectors. On the Pi, the cable's shiny contacts face the HDMI sockets."
@@ -393,13 +397,12 @@ def judge_power(flags: int | None) -> Result:
     if flags is None:
         return Result(WARNING, name, "couldn't read the Pi's power status.")
     if flags & UNDER_VOLTAGE_NOW:
-        return Result(PROBLEM, name, "the voltage is too low right now. The Pi needs a stronger power source.")
+        return Result(PROBLEM, name, "the voltage is too low right now. " + OWN_SUPPLY)
     if flags & UNDER_VOLTAGE_SINCE_START:
         return Result(
             WARNING,
             name,
-            "the voltage dipped too low at some point since the Pi was switched on. "
-            "If it's powered from your PC, that USB port may not be strong enough.",
+            "the voltage dipped too low at some point since the Pi was switched on. " + OWN_SUPPLY,
         )
     if flags & TOO_HOT:
         return Result(WARNING, name, "the Pi got hot and slowed itself down. Give it some air.")
@@ -424,8 +427,8 @@ def judge_keyboard(state: str | None, devices: bool) -> Result:
         return Result(
             NOT_YET,
             name,
-            "ready, but the Pi's USB-C port isn't connected to a computer. If it's plugged into "
-            "your PC, that cable may only carry power: try another one.",
+            "ready, but no computer is connected to the Pi's USB-C port. Connect it through a USB-C "
+            "power and data splitter: power from the Pi's own supply, data to the PC.",
         )
     if state == "suspended":
         return Result(WARNING, name, "your PC has put the Pi's USB connection to sleep. Is the PC asleep?")
@@ -437,7 +440,7 @@ def next_step(results: list[Result]) -> str:
     if problem:
         return f"Next: sort out the {problem.name.lower()} problem, then type desk-check again."
     if any(r.status == NOT_YET for r in results):
-        return "Next: connect the Pi's USB-C port to your PC, then type desk-check again."
+        return "Next: connect the Pi to your PC through a USB-C power and data splitter, then type desk-check again."
     if any(r.status == WARNING for r in results):
         return "It works. The warnings above are worth a look."
     return "Everything works."
@@ -469,7 +472,7 @@ def report(results: list[Result], seen: dict[str, list[Sample]], practice_mode: 
         lines.append("Practice mode is on: it writes down what it would do and presses nothing.")
     else:
         lines.append("Practice mode is off: it locks the PC for real.")
-    lines.append(next_step(results))
+    lines += textwrap.wrap(next_step(results), width=78)
     return "\n".join(lines) + "\n"
 
 
