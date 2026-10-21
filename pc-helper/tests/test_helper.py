@@ -144,3 +144,90 @@ def test_one_copy_runs_in_the_background_until_uninstalled(tmp_path):
     assert not link.exists()
     log = (tmp_path / "helper.log").read_text(encoding="utf-8")
     assert log.count("Helper started") == 2 and log.count("Stopped") == 2
+
+
+class FakePort:
+    def __init__(self):
+        self.written = b""
+
+    def write(self, data):
+        self.written += data
+
+
+def test_tells_the_pi_about_the_real_lock_screen(monkeypatch):
+    pc = FakePC(monkeypatch)
+    screen = {"locked session": False}
+    monkeypatch.setattr(desk_helper, "lock_screen_showing", lambda: screen["locked session"])
+    helper = desk_helper.Helper(None, stop=threading.Event(), clock=lambda: pc.now)
+    assert helper.pc_status() == "UNLOCKED"
+    pc.locked = True  # an admin prompt: the screen is taken, the session isn't locked
+    assert helper.pc_status() == "LOCKED"
+    screen["locked session"] = True
+    assert helper.pc_status() == "LOCK_SCREEN"
+
+
+def test_pin_box_hands_the_pin_to_the_pi_and_logs_no_pin(monkeypatch, caplog):
+    caplog.set_level(logging.INFO, logger="desk_helper")
+    pc = FakePC(monkeypatch)
+    asked = []
+
+    def ask():
+        asked.append(1)
+        return "8642"
+
+    helper = desk_helper.Helper(None, stop=threading.Event(), clock=lambda: pc.now, ask_pin=ask)
+    helper.port = FakePort()
+    helper.check_pc()
+    helper.on_message("NEED_PIN")
+    for t in threading.enumerate():
+        if t.name == "pin-box":
+            t.join(5)
+    assert asked == [1]
+    assert helper.port.written == b"PIN 8642\n"
+    helper.on_message("PIN_OK")
+    assert "8642" not in caplog.text
+    assert caplog.messages == ["Gave your PIN to the Pi", "The Pi has your PIN now (kept in its memory only)"]
+
+
+def test_pin_box_not_now_waits_and_never_shows_while_locked(monkeypatch):
+    pc = FakePC(monkeypatch)
+    asked = []
+
+    def ask():
+        asked.append(1)
+        return None
+
+    helper = desk_helper.Helper(None, stop=threading.Event(), clock=lambda: pc.now, ask_pin=ask)
+    helper.port = FakePort()
+    pc.locked = True
+    helper.check_pc()
+    helper.on_message("NEED_PIN")
+    assert asked == []
+    pc.locked = False
+    helper.check_pc()
+    helper.offer_pin_box()
+    for t in threading.enumerate():
+        if t.name == "pin-box":
+            t.join(5)
+    assert asked == [1] and helper.port.written == b""
+    helper.offer_pin_box()
+    assert asked == [1]  # "Not now" holds for a while
+    pc.later(desk_helper.PIN_SNOOZE + 1)
+    helper.offer_pin_box()
+    for t in threading.enumerate():
+        if t.name == "pin-box":
+            t.join(5)
+    assert asked == [1, 1]
+
+
+def test_only_real_pins_are_sent():
+    helper = desk_helper.Helper(None, stop=threading.Event())
+    helper.port = FakePort()
+    for bad in ("12", "12 34", "1234\nPAUSE", "x" * 21, "12;34"):
+        helper.send_pin(bad)
+    assert helper.port.written == b""
+
+
+@windows_only
+def test_windows_lock_screen_reading():
+    assert desk_helper.lock_screen_showing() in (True, False)

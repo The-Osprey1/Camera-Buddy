@@ -1,4 +1,4 @@
-"""Command line: `python3 -m desk_presence run|camera-test|check|log`."""
+"""Command line: `python3 -m desk_presence run|camera-test|check|face|log`."""
 
 from __future__ import annotations
 
@@ -18,11 +18,16 @@ def main() -> None:
     sub.add_parser("run", help="watch the desk and lock the PC when you leave")
     sub.add_parser("camera-test", help="print what the camera sees, press nothing")
     sub.add_parser("check", help="guided check of the power, keyboard mode and camera (desk-check runs this)")
+    face = sub.add_parser("face", help="enroll your face and test face unlock (desk-face runs this)")
+    face.add_argument(
+        "action", nargs="?", default="auto", choices=["auto", "enroll", "add", "test", "photo-test", "forget"],
+        help="auto (the default) enrolls you if you aren't yet, then tests",
+    )
     sub.add_parser("log", help="summarize the event log")
     args = parser.parse_args()
 
     # The check talks to you on screen, so it keeps the camera's own messages quiet.
-    level = logging.WARNING if args.command == "check" else logging.INFO
+    level = logging.WARNING if args.command in ("check", "face") else logging.INFO
     logging.basicConfig(level=level, format="%(asctime)s %(message)s")
     settings = config.load(args.config)
 
@@ -30,10 +35,15 @@ def main() -> None:
         print(events.summarize(settings.event_log))
         return
 
-    if args.command == "check":
-        from . import check
+    if args.command in ("check", "face"):
+        if args.command == "check":
+            from . import check
 
-        code = check.main(settings)
+            code = check.main(settings)
+        else:
+            from . import facecheck
+
+            code = facecheck.main(settings, args.action)
         sys.stdout.flush()
         # Don't wait for the camera's background threads to wind down.
         os._exit(code)
@@ -67,7 +77,7 @@ def main() -> None:
     app = build(settings)
     if settings.practice_mode:
         logging.info("Practice mode: no keys will be pressed. See the log with `log`.")
-    app.run(camera.frames())
+    app.run(camera.frames(wants_images=lambda: app.wants_images))
 
 
 if __name__ == "__main__":

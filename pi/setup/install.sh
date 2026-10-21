@@ -33,11 +33,16 @@ echo "Copying the program to /opt/desk-presence..."
 mkdir -p /opt/desk-presence
 rm -rf /opt/desk-presence/desk_presence /opt/desk-presence/setup
 cp -r "$HERE/desk_presence" "$HERE/setup" /opt/desk-presence/
-chmod +x /opt/desk-presence/setup/*.sh /opt/desk-presence/setup/desk-check
-# desk-check may be the one running this (through update.sh), so swap it in one
-# step instead of writing over it.
-cp /opt/desk-presence/setup/desk-check /usr/local/bin/desk-check.new
-mv /usr/local/bin/desk-check.new /usr/local/bin/desk-check
+chmod +x /opt/desk-presence/setup/*.sh /opt/desk-presence/setup/desk-check /opt/desk-presence/setup/desk-face
+# desk-check or desk-face may be the one running this (through update.sh), so swap
+# them in one step instead of writing over them.
+for tool in desk-check desk-face; do
+    cp "/opt/desk-presence/setup/$tool" "/usr/local/bin/$tool.new"
+    mv "/usr/local/bin/$tool.new" "/usr/local/bin/$tool"
+done
+
+echo "Downloading the face unlock models..."
+bash /opt/desk-presence/setup/get-models.sh || echo "Face unlock will work once they're downloaded: type desk-face when the Pi is online."
 
 echo "Turning on USB keyboard mode on the USB-C port..."
 BOOT_CONFIG=/boot/firmware/config.txt

@@ -18,6 +18,13 @@ class EventLog:
             f.write(json.dumps(entry) + "\n")
 
 
+SHOWN = {
+    "would_lock", "locked", "second_person", "paused", "resumed", "started",
+    "would_unlock", "unlocked", "unlock_failed", "unlock_skipped", "not_recognized",
+    "fake_face", "pin_received", "face_unlock_off",
+}
+
+
 def summarize(path: str) -> str:
     """A readable summary of the log, for checking practice mode before going live."""
     p = Path(path).expanduser()
@@ -31,7 +38,7 @@ def summarize(path: str) -> str:
         except json.JSONDecodeError:
             continue
         counts[e.get("event", "?")] = counts.get(e.get("event", "?"), 0) + 1
-        if e.get("event") in ("would_lock", "locked", "second_person", "paused", "resumed", "started"):
+        if e.get("event") in SHOWN:
             extra = {k: v for k, v in e.items() if k not in ("at", "event")}
             lines.append(f"{e['at']}  {e['event']:<14} {extra if extra else ''}".rstrip())
     total = ", ".join(f"{k}: {v}" for k, v in sorted(counts.items()))

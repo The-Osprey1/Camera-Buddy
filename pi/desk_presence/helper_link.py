@@ -17,32 +17,56 @@ STALE_SECONDS = 10.0
 
 
 class HelperLink:
-    def __init__(self, device: str, on_pause: Callable[[], None], clock=time.monotonic):
+    def __init__(
+        self,
+        device: str,
+        on_pause: Callable[[], None],
+        clock=time.monotonic,
+        on_pin: Callable[[str], None] | None = None,
+    ):
         self.device = device
         self.on_pause = on_pause
+        self.on_pin = on_pin
         self.clock = clock
-        self._locked: bool | None = None
+        self._status: str | None = None
         self._heard_at: float | None = None
         self._port = None
         self._lock = threading.Lock()
 
     @property
-    def pc_locked(self) -> bool | None:
-        """True or False from the helper, or None if the helper isn't running."""
+    def status(self) -> str | None:
+        """LOCKED, LOCK_SCREEN or UNLOCKED from the helper, or None if the helper isn't running."""
         with self._lock:
             if self._heard_at is None or self.clock() - self._heard_at > STALE_SECONDS:
                 return None
-            return self._locked
+            return self._status
+
+    @property
+    def pc_locked(self) -> bool | None:
+        """True or False from the helper, or None if the helper isn't running."""
+        status = self.status
+        return None if status is None else status != protocol.UNLOCKED
+
+    @property
+    def silent_for(self) -> float | None:
+        """Seconds since the helper was last heard, or None if it never has been."""
+        with self._lock:
+            return None if self._heard_at is None else self.clock() - self._heard_at
 
     def handle(self, line: bytes | str) -> None:
+        pin = protocol.parse_pin(line)
+        if pin is not None:
+            if self.on_pin is not None:
+                self.on_pin(pin)
+            return
         message = protocol.parse(line, protocol.FROM_PC)
         if message is None:
             return
-        if message == "PAUSE":
+        if message == protocol.PAUSE:
             self.on_pause()
             return
         with self._lock:
-            self._locked = message == "LOCKED"
+            self._status = message
             self._heard_at = self.clock()
 
     def send(self, message: str) -> None:

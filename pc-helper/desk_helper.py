@@ -4,7 +4,11 @@ Runs quietly on the PC and talks to the Pi over the same USB cable:
 - every 2 seconds (and the moment it changes) it tells the Pi whether the PC is locked,
   so the Pi never presses keys when the PC is already locked;
 - Ctrl+Alt+P pauses the Pi for an hour, or resumes it if paused;
-- it beeps for messages from the Pi (paused, resumed, someone behind you, locking).
+- it beeps for messages from the Pi (paused, resumed, someone behind you, locking, unlocking);
+- for face unlock, it tells the Pi when the real Windows lock screen is showing (as opposed
+  to an admin prompt, where the Pi must never type), and when the Pi asks, it pops up a box
+  for your Windows PIN and hands it to the Pi. The PIN isn't saved or logged anywhere: the
+  Pi keeps it in memory only.
 
 It writes what happens to helper.log next to this file: the Pi's messages, when the PC was
 locked and unlocked, and how long before each lock the keyboard and mouse were last used.
@@ -26,6 +30,7 @@ import argparse
 import logging
 import os
 import platform
+import re
 import subprocess
 import sys
 import threading
@@ -48,14 +53,37 @@ SHORTCUT_NAME = "Desk presence helper.lnk"
 # Marks a running helper, and lets a newer copy ask it to stop.
 SIGNAL_NAME = "Local\\DeskPresenceHelper"
 
-TO_PI = {"LOCKED", "UNLOCKED", "PAUSE"}
+TO_PI = {"LOCKED", "LOCK_SCREEN", "UNLOCKED", "PAUSE"}
 FROM_PI = {
     "PAUSED": ("Desk presence paused", (880, 120), (660, 120)),
     "RESUMED": ("Desk presence resumed", (660, 120), (880, 120)),
     "WARN SECOND_PERSON": ("Someone is standing behind you", (1200, 150), (1200, 150), (1200, 150)),
     "LOCKING": ("Locking: you walked away", (500, 80)),
     "WOULD_LOCK": ("Practice mode: would have locked now", (500, 60)),
+    "UNLOCKING": ("Unlocking: it recognized you", (700, 60), (1000, 60)),
+    "WOULD_UNLOCK": ("Practice mode: would have unlocked now (it recognized you)", (700, 50), (1000, 50)),
+    "UNLOCK_FAILED": (
+        "Face unlock typed your PIN but the PC stayed locked, so the Pi forgot the PIN. "
+        "Unlock by hand once, and it asks for your PIN again",
+        (400, 200), (300, 300),
+    ),
+    "FACE_REFUSED": (
+        "Face unlock refused a face that looked like a photo or a screen. "
+        "It's off until you unlock by hand once",
+        (1200, 150), (400, 300),
+    ),
+    "NEED_PIN": ("The Pi asked for your PIN, for face unlock",),
+    "PIN_OK": ("The Pi has your PIN now (kept in its memory only)",),
 }
+PIN_PATTERN = re.compile(r"[A-Za-z0-9]{4,20}")
+# "Not now" on the PIN box: don't ask again for this long.
+PIN_SNOOZE = 8 * 3600.0
+PIN_PROMPT = (
+    "Face unlock: so the Pi can unlock this PC when it recognizes you, type your Windows PIN "
+    "(the one you type at the lock screen).\n\n"
+    "The Pi keeps it in its memory only, never on its card, and forgets it when it's unplugged "
+    "or restarts. This PC doesn't keep it either."
+)
 
 log = logging.getLogger("desk_helper")
 
@@ -69,6 +97,10 @@ def parse_from_pi(line: bytes) -> str | None:
     except UnicodeDecodeError:
         return None
     return message if message in FROM_PI else None
+
+
+def valid_pin(pin: str) -> bool:
+    return bool(PIN_PATTERN.fullmatch(pin))
 
 
 def span(seconds: float) -> str:
@@ -127,6 +159,57 @@ if sys.platform == "win32":
             return not user32.SwitchDesktop(desktop)
         finally:
             user32.CloseDesktop(desktop)
+
+    wtsapi32 = ctypes.WinDLL("wtsapi32", use_last_error=True)
+
+    class WTSINFOEX_LEVEL1_W(ctypes.Structure):
+        _fields_ = [
+            ("SessionId", wintypes.ULONG),
+            ("SessionState", ctypes.c_int),
+            ("SessionFlags", wintypes.LONG),
+            ("WinStationName", wintypes.WCHAR * 33),
+            ("UserName", wintypes.WCHAR * 21),
+            ("DomainName", wintypes.WCHAR * 18),
+            ("LogonTime", wintypes.LARGE_INTEGER),
+            ("ConnectTime", wintypes.LARGE_INTEGER),
+            ("DisconnectTime", wintypes.LARGE_INTEGER),
+            ("LastInputTime", wintypes.LARGE_INTEGER),
+            ("CurrentTime", wintypes.LARGE_INTEGER),
+            ("IncomingBytes", wintypes.DWORD),
+            ("OutgoingBytes", wintypes.DWORD),
+            ("IncomingFrames", wintypes.DWORD),
+            ("OutgoingFrames", wintypes.DWORD),
+            ("IncomingCompressedBytes", wintypes.DWORD),
+            ("OutgoingCompressedBytes", wintypes.DWORD),
+        ]
+
+    class WTSINFOEXW(ctypes.Structure):
+        _fields_ = [("Level", wintypes.DWORD), ("Data", WTSINFOEX_LEVEL1_W)]
+
+    wtsapi32.WTSQuerySessionInformationW.argtypes = [
+        wintypes.HANDLE, wintypes.DWORD, ctypes.c_int,
+        ctypes.POINTER(ctypes.c_void_p), ctypes.POINTER(wintypes.DWORD),
+    ]
+    wtsapi32.WTSFreeMemory.argtypes = [ctypes.c_void_p]
+    WTS_CURRENT_SESSION = 0xFFFFFFFF
+    WTS_SESSION_INFO_EX = 25
+    WTS_SESSIONSTATE_LOCK = 0
+
+    def lock_screen_showing() -> bool:
+        """Whether Windows itself says this session is locked. An admin prompt also takes
+        the screen, but leaves the session unlocked, so the Pi never types into one."""
+        buffer, size = ctypes.c_void_p(), wintypes.DWORD()
+        if not wtsapi32.WTSQuerySessionInformationW(
+            None, WTS_CURRENT_SESSION, WTS_SESSION_INFO_EX, ctypes.byref(buffer), ctypes.byref(size)
+        ):
+            return False
+        try:
+            if size.value < ctypes.sizeof(WTSINFOEXW):
+                return False
+            info = ctypes.cast(buffer, ctypes.POINTER(WTSINFOEXW)).contents
+            return info.Level == 1 and info.Data.SessionFlags == WTS_SESSIONSTATE_LOCK
+        finally:
+            wtsapi32.WTSFreeMemory(buffer)
 
     def seconds_since_input() -> float | None:
         """How long ago the keyboard or mouse was last used, or None if Windows won't say."""
@@ -248,6 +331,9 @@ else:  # lets the file be imported for tests on other systems
     def pc_is_locked() -> bool:
         return False
 
+    def lock_screen_showing() -> bool:
+        return False
+
     def seconds_since_input() -> float | None:
         return None
 
@@ -270,6 +356,40 @@ else:  # lets the file be imported for tests on other systems
         pass
 
 
+def ask_for_pin() -> str | None:
+    """A small box for your Windows PIN. Returns it, or None for "Not now"."""
+    import tkinter as tk
+
+    result: dict[str, str] = {}
+    root = tk.Tk()
+    root.title("Desk presence")
+    root.attributes("-topmost", True)
+    root.resizable(False, False)
+    tk.Label(root, text=PIN_PROMPT, justify="left", wraplength=380).pack(padx=16, pady=(16, 8))
+    entry = tk.Entry(root, show="*", width=24)
+    entry.pack(padx=16)
+    problem = tk.Label(root, text="", fg="#b00020")
+    problem.pack(padx=16)
+
+    def give(_event=None):
+        pin = entry.get().strip()
+        if not valid_pin(pin):
+            problem.config(text="That isn't a PIN: it's 4 to 20 letters and digits.")
+            return
+        result["pin"] = pin
+        root.destroy()
+
+    buttons = tk.Frame(root)
+    buttons.pack(padx=16, pady=(8, 16), anchor="e")
+    tk.Button(buttons, text="Not now", command=root.destroy).pack(side="right", padx=(8, 0))
+    tk.Button(buttons, text="Give it to the Pi", command=give, default="active").pack(side="right")
+    root.bind("<Return>", give)
+    root.bind("<Escape>", lambda _event: root.destroy())
+    root.after(200, entry.focus_force)
+    root.mainloop()
+    return result.get("pin")
+
+
 def find_pi_port() -> str | None:
     from serial.tools import list_ports
 
@@ -280,7 +400,7 @@ def find_pi_port() -> str | None:
 
 
 class Helper:
-    def __init__(self, port_name: str | None, stop: StopSignal | None = None, clock=time.time):
+    def __init__(self, port_name: str | None, stop: StopSignal | None = None, clock=time.time, ask_pin=ask_for_pin):
         self.port_name = port_name
         self.stop = stop or StopSignal()
         self.clock = clock
@@ -290,12 +410,49 @@ class Helper:
         self.locked_at = 0.0
         # When you last used the keyboard or mouse, while they've been unused for LONG_IDLE.
         self.idle_from: float | None = None
+        self.ask_pin = ask_pin
+        self.pin_box_open = False
+        self.pin_snoozed_until = 0.0
 
     def send(self, message: str) -> None:
         assert message in TO_PI
         with self.write_lock:
             if self.port is not None:
                 self.port.write((message + "\n").encode("ascii"))
+
+    def send_pin(self, pin: str) -> None:
+        if not valid_pin(pin):
+            return
+        with self.write_lock:
+            if self.port is not None:
+                self.port.write(f"PIN {pin}\n".encode("ascii"))
+
+    def offer_pin_box(self) -> None:
+        """Shows the PIN box, unless one is open, you said "Not now" lately, or the PC is locked."""
+        if self.pin_box_open or self.locked is not False or self.clock() < self.pin_snoozed_until:
+            return
+        self.pin_box_open = True
+
+        def run():
+            try:
+                pin = self.ask_pin()
+                if pin is None:
+                    self.pin_snoozed_until = self.clock() + PIN_SNOOZE
+                    log.info("PIN box: not now (it asks again in %s)", span(PIN_SNOOZE))
+                    return
+                try:
+                    self.send_pin(pin)
+                except Exception as e:  # cable pulled mid-write
+                    log.warning("Could not reach the Pi: %s", e)
+                else:
+                    log.info("Gave your PIN to the Pi")
+            except Exception:
+                log.exception("The PIN box didn't work")
+                self.pin_snoozed_until = self.clock() + PIN_SNOOZE
+            finally:
+                self.pin_box_open = False
+
+        threading.Thread(target=run, name="pin-box", daemon=True).start()
 
     def request_pause(self) -> None:
         log.info("Pause switch pressed")
@@ -306,6 +463,9 @@ class Helper:
 
     def on_message(self, message: str) -> None:
         text, *tones = FROM_PI[message]
+        if message == "NEED_PIN":
+            self.offer_pin_box()
+            return
         if message in ("WOULD_LOCK", "LOCKING"):
             text += last_used(seconds_since_input())
             if self.locked:
@@ -313,6 +473,12 @@ class Helper:
                 text += ", but the PC was already locked: is the Pi hearing the helper?"
         log.info(text)
         beep(*tones)
+
+    def pc_status(self) -> str:
+        """LOCK_SCREEN, LOCKED (an admin prompt, say) or UNLOCKED, for the Pi."""
+        if not self.check_pc():
+            return "UNLOCKED"
+        return "LOCK_SCREEN" if lock_screen_showing() else "LOCKED"
 
     def check_pc(self) -> bool:
         """Whether the PC is locked. Writes down locks, unlocks and long spells of not using it."""
@@ -345,11 +511,11 @@ class Helper:
             last_sent, last_state = 0.0, None
             try:
                 while not self.stop.is_set():
-                    locked = self.check_pc()
+                    status = self.pc_status()
                     now = time.monotonic()
-                    if locked != last_state or now - last_sent >= STATUS_EVERY:
-                        self.send("LOCKED" if locked else "UNLOCKED")
-                        last_sent, last_state = now, locked
+                    if status != last_state or now - last_sent >= STATUS_EVERY:
+                        self.send(status)
+                        last_sent, last_state = now, status
                     line = port.readline(MAX_LINE + 2)
                     if line:
                         message = parse_from_pi(line)

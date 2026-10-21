@@ -1,0 +1,27 @@
+#!/bin/bash
+# desk-face: enroll your face for face unlock, and test it. It tells you on screen
+# what to do and beeps when it's time for the next step, and presses nothing.
+#   desk-face             enrolls you if you aren't yet, then tests that it knows you
+#   desk-face add         adds more looks at you (say, in evening light), then tests
+#   desk-face enroll      starts your enrolled face over
+#   desk-face test        only the test
+#   desk-face photo-test  hold a photo of yourself up: it should refuse it
+#   desk-face forget      deletes your enrolled face, which turns face unlock off
+# Like desk-check, it first installs the newest version when the Pi is online, and
+# pauses the background program while it uses the camera.
+
+# Everything is inside main, so an update replacing this file mid-run is harmless.
+main() {
+    if [ "$(id -u)" -eq 0 ]; then
+        echo "Type desk-face without sudo."
+        return 1
+    fi
+    sudo systemctl stop desk-presence
+    trap 'sudo systemctl start desk-presence' EXIT
+    trap ':' INT # Ctrl+C stops it, not this script
+    sudo /opt/desk-presence/setup/update.sh
+    sudo /opt/desk-presence/setup/get-models.sh
+    cd /opt/desk-presence && python3 -m desk_presence --config "$HOME/desk-presence/config.toml" face "$@"
+}
+main "$@"
+exit

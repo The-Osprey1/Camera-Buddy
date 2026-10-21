@@ -14,7 +14,7 @@ jobs:
           python-version: "3.11"  # same as Raspberry Pi OS Bookworm
       - run: pip install pytest
       - run: python -m pytest -q pi/tests pc-helper/tests
-      - run: for f in pi/setup/*.sh pi/setup/desk-check; do bash -n "$f" || exit 1; done
+      - run: for f in pi/setup/*.sh pi/setup/desk-check pi/setup/desk-face; do bash -n "$f" || exit 1; done
 
   pc-helper-windows:
     runs-on: windows-latest

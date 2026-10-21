@@ -81,3 +81,5 @@ class Frame:
     people: list[Person] = field(default_factory=list)
     # Scene brightness estimated by the camera, if it reports one.
     lux: float | None = None
+    # The camera's picture (480 x 640, BGR), only when face unlock asked for it. Never saved.
+    image: object = None
