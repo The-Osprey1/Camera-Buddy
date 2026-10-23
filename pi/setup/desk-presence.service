@@ -6,6 +6,11 @@ Wants=desk-presence-gadget.service
 [Service]
 User=__USER__
 WorkingDirectory=/opt/desk-presence
+RuntimeDirectory=desk-presence
+Environment=PYTHONUNBUFFERED=1
+Environment=OPENCV_LOG_LEVEL=ERROR
+Environment=OMP_NUM_THREADS=4
+Nice=-5
 ExecStart=/usr/bin/python3 -m desk_presence --config __HOME__/desk-presence/config.toml run
 Restart=on-failure
 RestartSec=5

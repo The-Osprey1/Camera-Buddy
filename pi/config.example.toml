@@ -35,3 +35,24 @@ action = "warn"
 min_size_ratio = 0.25
 seconds = 2.0
 cooldown_seconds = 60.0
+
+[unlock]
+# Face unlock. "practice" (the default) writes down when it would have unlocked, and
+# types nothing. "on" types your Windows PIN when it recognizes you, once practice_mode
+# above is false too. "off" never looks for faces. Nothing happens until you've
+# enrolled your face with desk-face.
+mode = "practice"
+# How alike a face must be to yours (0 to 1). Higher is stricter.
+match_threshold = 0.45
+# Your face must match on this many looks in a row, over at least this many seconds.
+match_frames = 5
+match_seconds = 0.8
+# It stops looking this long after you sit down, until you next leave and come back.
+give_up_seconds = 30.0
+# It only unlocks if it locked the PC itself, at most this many hours ago.
+max_hours = 4.0
+# The fake-face check: a face scoring below this counts as a photo or a screen.
+# Raise it (say to 1.0) if desk-face photo-test fools it; lower it if it refuses you.
+real_face_threshold = 0.0
+# A matching face that looks fake this many times turns auto-unlock off until you unlock by hand.
+fake_frames = 3

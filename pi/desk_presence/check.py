@@ -109,7 +109,7 @@ class CameraFeed:
     """Starts the camera and reads its results in the background, so the check can
     keep counting down, and can tell when the camera stops."""
 
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, images: bool = False):
         # libcamera's progress messages would bury the instructions.
         os.environ.setdefault("LIBCAMERA_LOG_LEVELS", "*:ERROR")
         try:
@@ -122,13 +122,13 @@ class CameraFeed:
             raise CameraProblem("the Pi can't find the camera. " + RESEAT_CABLE)
         self._results: queue.Queue[Frame] = queue.Queue()
         self._error: Exception | None = None
-        threading.Thread(target=self._run, args=(model_path,), daemon=True).start()
+        threading.Thread(target=self._run, args=(model_path, images), daemon=True).start()
 
-    def _run(self, model_path: str) -> None:
+    def _run(self, model_path: str, images: bool) -> None:
         try:
             from .camera import PoseCamera
 
-            for frame in PoseCamera(model_path).frames():
+            for frame in PoseCamera(model_path).frames(wants_images=lambda: images):
                 self._results.put(frame)
         except Exception as e:
             self._error = e

@@ -66,8 +66,17 @@ def test_example_config_is_valid():
 
 class FakeHelper:
     def __init__(self):
-        self.pc_locked = None
+        self.status = None
+        self.silent_for = None
         self.sent = []
+
+    @property
+    def pc_locked(self):
+        return None if self.status is None else self.status != protocol.UNLOCKED
+
+    @pc_locked.setter
+    def pc_locked(self, locked):
+        self.status = None if locked is None else protocol.LOCKED if locked else protocol.UNLOCKED
 
     def send(self, m):
         self.sent.append(m)

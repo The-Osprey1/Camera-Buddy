@@ -36,6 +36,30 @@ class SecondPersonSettings:
 
 
 @dataclass
+class UnlockSettings:
+    # "practice" writes down when it would have unlocked and types nothing; "on" types
+    # your PIN for real (only once practice_mode is off too); "off" never looks for faces.
+    mode: str = "practice"
+    # Your enrolled face (numbers only, no photos). desk-face makes it.
+    face_file: str = "~/desk-presence/face.npz"
+    models_dir: str = "/opt/desk-presence/models"
+    # How alike a face must be to yours (0 to 1). Higher is stricter.
+    match_threshold: float = 0.45
+    # Your face must match on this many checks in a row, spread over at least match_seconds.
+    match_frames: int = 5
+    match_seconds: float = 0.8
+    # Stop looking this long after you sit down, until you next leave and come back.
+    give_up_seconds: float = 30.0
+    # Only unlock if the Pi itself locked the PC, at most this many hours ago.
+    max_hours: float = 4.0
+    # The fake-face check: below this score a face counts as a photo or a screen.
+    # 0 is the model's own even line; raise it to be stricter. A matching face that
+    # looks fake on fake_frames checks turns auto-unlock off until you unlock by hand.
+    real_face_threshold: float = 0.0
+    fake_frames: int = 3
+
+
+@dataclass
 class Settings:
     # Practice mode: write down what it would do, press no keys. Leave on for the first week.
     practice_mode: bool = True
@@ -49,6 +73,7 @@ class Settings:
     pause_button_pin: int = 0
     presence: PresenceSettings = field(default_factory=PresenceSettings)
     second_person: SecondPersonSettings = field(default_factory=SecondPersonSettings)
+    unlock: UnlockSettings = field(default_factory=UnlockSettings)
 
 
 def _apply(target, values: dict, where: str) -> None:
@@ -76,4 +101,6 @@ def load(path: str | Path | None) -> Settings:
             _apply(settings, tomllib.load(f), "")
     if settings.second_person.action not in ("warn", "lock", "off"):
         raise ValueError("second_person.action must be 'warn', 'lock' or 'off'")
+    if settings.unlock.mode not in ("practice", "on", "off"):
+        raise ValueError("unlock.mode must be 'practice', 'on' or 'off'")
     return settings

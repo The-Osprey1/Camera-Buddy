@@ -1,10 +1,10 @@
 # Desk presence
 
-Locks your Windows PC when you walk away from your desk, using a Raspberry Pi 4B and the Raspberry Pi AI Camera.
+Locks your Windows PC when you walk away from your desk, and unlocks it when it recognizes your face as you sit back down, using a Raspberry Pi 4B and the Raspberry Pi AI Camera.
 
 The camera runs a body pose model on its own chip (it finds your head and shoulders about 30 times a second), so the Pi only receives the results and no pictures are ever stored. The Pi plugs into the PC's USB port and acts as an ordinary keyboard: when you leave, it presses **Windows + L**. Locking keeps every program running; nothing closes.
 
-This is step one of the bigger plan. Auto-unlock comes later.
+Face unlock is newer, and starts in practice too: see [Face unlock](#face-unlock).
 
 ## What's in here
 
@@ -13,7 +13,7 @@ This is step one of the bigger plan. Auto-unlock comes later.
 | `pi/desk_presence/` | The program that runs on the Pi |
 | `pi/setup/` | Install script, USB keyboard setup and start-at-boot services |
 | `pi/config.example.toml` | All the settings, with explanations |
-| `pc-helper/desk_helper.py` | A small optional program for the PC (pause hotkey, lock status, warnings) |
+| `pc-helper/desk_helper.py` | A small program for the PC (pause hotkey, lock status, warnings, the PIN box for face unlock). Optional for locking, needed for unlocking |
 
 ## Safeguards against locking by mistake
 
@@ -96,12 +96,44 @@ cd /opt/desk-presence && python3 -m desk_presence --config ~/desk-presence/confi
 
 Every `would_lock` line should match a time you really walked away. If it locked too eagerly, raise `away_seconds`. If it missed you leaving, check `camera-test` and the camera angle. When you're happy, set `practice_mode = false` in `~/desk-presence/config.toml` and run `sudo systemctl restart desk-presence`.
 
+## Face unlock
+
+When it locked the PC because you walked away, and you come back and sit down, the Pi looks at the camera's picture, and if it's you, it types your Windows PIN at the lock screen.
+
+The pose model keeps running on the camera's chip. Only while the PC is locked and someone is sitting in your chair does the Pi look at the picture itself, with three small models (downloaded once and checked by `setup/get-models.sh`): a face finder (YuNet), a face describer that turns a face into 128 numbers (SFace), and a fake-face check that looks for paper texture and screen glare (MiniFAS, from [face-antispoof-onnx](https://github.com/suriAI/face-antispoof-onnx)). No pictures are saved: enrolling keeps only those numbers, in `~/desk-presence/face.npz`.
+
+### Setting it up
+
+1. Make sure your Windows sign-in uses a **PIN** (Settings, Accounts, Sign-in options), not just your Microsoft account password. A PIN only works on this one PC.
+2. On the Pi, type `desk-face`. It walks you through looking at the screen, at the camera, turning your head and leaning back and in, then tests that it knows you. It presses nothing. Run `desk-face add` in other light (say in the evening), so it knows you then too.
+3. Optional but worth it: `desk-face photo-test`, holding a photo of yourself up in front of your face. It should refuse it.
+4. Update the PC helper (copy the new `pc-helper` folder over the old one and double-click `start-helper.cmd`). It needs Python's tkinter, which python.org's installer includes.
+
+Face unlock then runs in practice: each time you come back after a "would have locked", the PC beeps twice and the log says whether it would have unlocked you, and how quickly (`would_unlock`), or that it didn't recognize you (`not_recognized`). It types nothing.
+
+To switch it on for real, set `practice_mode = false` and, under `[unlock]`, `mode = "on"` in `~/desk-presence/config.toml`, then `sudo systemctl restart desk-presence`. The PC helper then pops up a box asking for your Windows PIN, which it hands to the Pi. **The Pi keeps your PIN in memory only**: not on its card, not in any log. When the Pi restarts or is unplugged, it's gone, and the helper asks again (or click "Not now", and it asks again in 8 hours).
+
+### Safeguards
+
+- **Only after the Pi itself locked the PC** because you walked away, and at most 4 hours ago (`max_hours`). After the Pi or the PC restarts, or the PC sleeps, you unlock by hand.
+- **Only at the real Windows lock screen.** The helper tells the Pi when Windows says the session is locked, so the Pi never types into an admin ("allow changes?") prompt or a chat window. Without the helper, it never types.
+- **Only once you're seated**, and only when your face matches on 5 looks in a row over at least 0.8 seconds. Never while a second person is in view.
+- **The face has to fit your body:** it must be where the pose model puts your head, the right size for your shoulders, and about the size it was when you enrolled. A photo held up close fails this.
+- **The fake-face check.** A matching face that looks like a photo or a screen 3 times turns auto-unlock off until you unlock by hand once, and the helper beeps a warning and logs it.
+- **One PIN attempt per return.** If the PC is still locked afterwards (say you changed your PIN), the Pi clears what it typed, forgets the PIN, and stops until you unlock by hand once. So it can never be what locks you out of Windows.
+- It looks for 30 seconds after you sit down (`give_up_seconds`), then waits for you to leave and come back. Too dark to judge, or paused (Ctrl + Alt + P), means it does nothing.
+- A digits-only PIN is typed without Enter (Windows signs in by itself after the last digit). A PIN with letters gets Enter straight after. Letters assume an English keyboard layout.
+
+Honest limits: this stops printed photos, phone and tablet screens and anyone at home trying a trick, but it isn't as strong as a Windows Hello infrared camera, and it won't stop a determined attacker with a realistic mask. Not built yet from the plan: the phone-in-view check, the LED ring challenge and the phone-nearby (Bluetooth) check.
+
+Works on Raspberry Pi OS Bookworm (OpenCV 4.6, with the first YuNet face finder) and Trixie or newer (OpenCV 4.8+, with the newer one).
+
 ## Messages on the cable
 
 The Pi and the helper only ever send these lines, and ignore anything else:
 
-- PC to Pi: `LOCKED`, `UNLOCKED` (every 2 seconds), `PAUSE` (toggle)
-- Pi to PC: `PAUSED`, `RESUMED`, `WARN SECOND_PERSON`, `LOCKING`, `WOULD_LOCK`, and what the camera sees when it changes and once a minute: `CAMERA SEATED`, `CAMERA STOOD_UP`, `CAMERA AWAY`, `CAMERA TOO_DARK`
+- PC to Pi: `LOCKED`, `LOCK_SCREEN` (the real lock screen) or `UNLOCKED` (every 2 seconds), `PAUSE` (toggle), and `PIN` followed by 4 to 20 letters and digits (only after the Pi asks, and only what you typed into the PIN box)
+- Pi to PC: `PAUSED`, `RESUMED`, `WARN SECOND_PERSON`, `LOCKING`, `WOULD_LOCK`, `UNLOCKING`, `WOULD_UNLOCK`, `UNLOCK_FAILED`, `FACE_REFUSED`, `NOT_RECOGNIZED`, `NEED_PIN`, `PIN_OK`, and what the camera sees when it changes and once a minute: `CAMERA SEATED`, `CAMERA STOOD_UP`, `CAMERA AWAY`, `CAMERA TOO_DARK`
 
 ## Running the tests
 
@@ -114,5 +146,5 @@ The tests don't need a Pi or a camera.
 
 ## Not done yet
 
-- Auto-unlock (face recognition, typing the PIN, the anti-spoofing layers)
+- The rest of the anti-spoofing layers: phone-in-view check, LED ring challenge, phone nearby over Bluetooth
 - Extras: pausing music when you leave, posture and break reminders, desk time report
