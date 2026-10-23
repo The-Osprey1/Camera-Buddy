@@ -126,7 +126,7 @@ To switch it on for real, set `practice_mode = false` and, under `[unlock]`, `mo
 
 Honest limits: this stops printed photos, phone and tablet screens and anyone at home trying a trick, but it isn't as strong as a Windows Hello infrared camera, and it won't stop a determined attacker with a realistic mask. Not built yet from the plan: the phone-in-view check, the LED ring challenge and the phone-nearby (Bluetooth) check.
 
-Needs Raspberry Pi OS Trixie or newer (OpenCV 4.8+).
+Works on Raspberry Pi OS Bookworm (OpenCV 4.6, with the first YuNet face finder) and Trixie or newer (OpenCV 4.8+, with the newer one).
 
 ## Messages on the cable
 

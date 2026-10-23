@@ -71,3 +71,10 @@ def test_look_in_the_dark_judges_nothing():
     engine.bright = 10.0
     check, vector = faces.look(engine, IMAGE, person(), 0.3, faceprint())
     assert check.found and check.too_dark and not check.usable and vector is None
+
+
+def test_older_opencv_gets_the_older_face_finder():
+    assert faces.opencv_version("4.6.0") == (4, 6, 0)
+    assert faces.opencv_version("4.10.0-dev") == (4, 10, 0)
+    assert faces.detector_for((4, 6, 0)) == faces.OLD_DETECTOR
+    assert faces.detector_for((4, 10, 0)) == faces.DETECTOR

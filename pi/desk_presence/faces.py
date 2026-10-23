@@ -15,6 +15,7 @@ Enrolling keeps only those numbers in ~/desk-presence/face.npz, never a picture.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,12 +25,25 @@ from .pose import LEFT_EAR, LEFT_EYE, LEFT_SHOULDER, NOSE, RIGHT_EAR, RIGHT_EYE,
 
 # The files setup/get-models.sh downloads (and checks) into the models folder.
 DETECTOR = "face_detection_yunet_2023mar.onnx"
+# The face finder's first version, for OpenCV before 4.8 (Raspberry Pi OS Bookworm has 4.6),
+# which can't run the newer one.
+OLD_DETECTOR = "face_detection_yunet_2022mar.onnx"
+NEW_DETECTOR_OPENCV = (4, 8)
 RECOGNIZER = "face_recognition_sface_2021dec.onnx"
 REAL_FACE = "face_antispoof_minifas.onnx"
-MODEL_FILES = (DETECTOR, RECOGNIZER, REAL_FACE)
+MODEL_FILES = (DETECTOR, OLD_DETECTOR, RECOGNIZER, REAL_FACE)
 
 # The face finder and recognizer models need OpenCV 4.5.4 or newer (standard on Raspberry Pi OS Bookworm).
 MIN_OPENCV = (4, 5, 4)
+
+
+def opencv_version(text: str) -> tuple[int, ...]:
+    """(4, 6, 0) from "4.6.0" or "4.10.0-dev"."""
+    return tuple(int(n) for n in re.findall(r"\d+", text)[:3])
+
+
+def detector_for(version: tuple[int, ...]) -> str:
+    return DETECTOR if version >= NEW_DETECTOR_OPENCV else OLD_DETECTOR
 # Faces smaller than this many pixels across are too small to recognize.
 MIN_FACE_PIXELS = 40
 # A face darker than this (0 to 255) is too dark to judge.
@@ -177,7 +191,7 @@ class FaceEngine:
             import cv2
         except ImportError as e:
             raise FaceModelsMissing("OpenCV isn't installed (sudo apt install python3-opencv).") from e
-        version = tuple(int(p) for p in cv2.__version__.split(".")[:3])
+        version = opencv_version(cv2.__version__)
         if version < MIN_OPENCV or not hasattr(cv2, "FaceDetectorYN"):
             raise FaceModelsMissing(
                 f"this Pi's OpenCV ({cv2.__version__}) is too old for the face models (needs 4.5.4+). "
@@ -191,16 +205,27 @@ class FaceEngine:
         except Exception:
             pass
         folder = Path(models_dir)
-        missing = [name for name in MODEL_FILES if not (folder / name).exists()]
+        detector = detector_for(version)
+        missing = [name for name in (detector, RECOGNIZER, REAL_FACE) if not (folder / name).exists()]
         if missing:
             raise FaceModelsMissing(
                 f"the face models aren't downloaded yet ({', '.join(missing)}). "
                 "Connect the Pi to the internet and run desk-face again."
             )
         self.cv2 = cv2
-        self.detector = cv2.FaceDetectorYN.create(str(folder / DETECTOR), "", (640, 480), 0.8, 0.3, 20)
-        self.recognizer = cv2.FaceRecognizerSF.create(str(folder / RECOGNIZER), "")
-        self.real_net = cv2.dnn.readNetFromONNX(str(folder / REAL_FACE))
+        try:
+            self.detector = cv2.FaceDetectorYN.create(str(folder / detector), "", (640, 480), 0.8, 0.3, 20)
+            self.recognizer = cv2.FaceRecognizerSF.create(str(folder / RECOGNIZER), "")
+            self.real_net = cv2.dnn.readNetFromONNX(str(folder / REAL_FACE))
+            # Some models load on an OpenCV that can't run them, so try each one once now,
+            # rather than failing on every picture later.
+            blank = np.zeros((480, 640, 3), dtype=np.uint8)
+            self.find(blank)
+            self.real_score(blank, Face((280.0, 200.0, 80.0, 100.0), 1.0, np.zeros(15, dtype=np.float32)))
+        except cv2.error as e:
+            raise FaceModelsMissing(
+                f"the face models don't run on this Pi's OpenCV ({cv2.__version__}): {str(e).strip()[-200:]}"
+            ) from e
 
     def find(self, image: np.ndarray) -> list[Face]:
         h, w = image.shape[:2]
