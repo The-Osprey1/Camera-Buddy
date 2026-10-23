@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import time
 from typing import Iterable
@@ -39,6 +40,7 @@ class DeskPresence:
         face_engine=None,
         faceprint: faces.Faceprint | None = None,
         sleep=time.sleep,
+        async_faces: bool = False,
     ):
         self.settings = settings
         self.keyboard = keyboard
@@ -60,6 +62,9 @@ class DeskPresence:
         self.last_look = float("-inf")
         self.last_pin_ask = float("-inf")
         self.face_error_logged = False
+        self.async_faces = async_faces
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1) if async_faces else None
+        self._pending_future: concurrent.futures.Future | None = None
 
     @property
     def wants_images(self) -> bool:
@@ -128,21 +133,46 @@ class DeskPresence:
     def handle_unlock(self, frame: Frame, obs: Observation, paused: bool) -> None:
         status = self.helper.status
         check = None
-        if (
-            frame.image is not None
-            and frame.time - self.last_look >= LOOK_EVERY
-            and self.unlock.wants_faces(obs, status)
-        ):
-            self.last_look = frame.time
-            bodies = self.tracker.bodies(frame)
-            if bodies:
-                score = self.settings.presence.min_keypoint_score
+        if self._executor is not None:
+            if self._pending_future is not None and self._pending_future.done():
                 try:
-                    check, _ = faces.look(self.face_engine, frame.image, bodies[0], score, self.faceprint)
-                except Exception as e:  # a face model choking on one picture: skip it
+                    check, _ = self._pending_future.result()
+                except Exception as e:
                     if not self.face_error_logged:
                         log.exception("Face check failed: %s", e)
                         self.face_error_logged = True
+                self._pending_future = None
+
+            if (
+                self._pending_future is None
+                and frame.image is not None
+                and frame.time - self.last_look >= LOOK_EVERY
+                and self.unlock.wants_faces(obs, status)
+            ):
+                self.last_look = frame.time
+                bodies = self.tracker.bodies(frame)
+                if bodies:
+                    score = self.settings.presence.min_keypoint_score
+                    img = frame.image.copy()
+                    self._pending_future = self._executor.submit(
+                        faces.look, self.face_engine, img, bodies[0], score, self.faceprint
+                    )
+        else:
+            if (
+                frame.image is not None
+                and frame.time - self.last_look >= LOOK_EVERY
+                and self.unlock.wants_faces(obs, status)
+            ):
+                self.last_look = frame.time
+                bodies = self.tracker.bodies(frame)
+                if bodies:
+                    score = self.settings.presence.min_keypoint_score
+                    try:
+                        check, _ = faces.look(self.face_engine, frame.image, bodies[0], score, self.faceprint)
+                    except Exception as e:  # a face model choking on one picture: skip it
+                        if not self.face_error_logged:
+                            log.exception("Face check failed: %s", e)
+                            self.face_error_logged = True
 
         for decision in self.unlock.step(obs, check, status, paused, self.helper.silent_for):
             if decision.action == "would_unlock":
@@ -231,7 +261,9 @@ def build(settings: Settings) -> DeskPresence:
         on_pause=lambda: holder["app"].toggle_pause(),
         on_pin=lambda pin: holder["app"].receive_pin(pin),
     )
-    app = DeskPresence(settings, keyboard, helper, events, face_engine=engine, faceprint=faceprint)
+    app = DeskPresence(
+        settings, keyboard, helper, events, face_engine=engine, faceprint=faceprint, async_faces=True
+    )
     holder["app"] = app
     helper.start()
     if settings.pause_button_pin:

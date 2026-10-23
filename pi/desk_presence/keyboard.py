@@ -49,11 +49,14 @@ class UsbKeyboard:
     def __init__(self, device: str):
         self.device = device
 
-    def press(self, modifiers: int, key: int) -> None:
+    def press(self, modifiers: int, key: int, hold_seconds: float = 0.02) -> None:
         # Non-blocking, so an unplugged cable raises an error instead of freezing the program.
-        fd = os.open(self.device, os.O_WRONLY | os.O_NONBLOCK)
+        flags = os.O_WRONLY | getattr(os, "O_NONBLOCK", 0)
+        fd = os.open(self.device, flags)
         try:
             self._send(fd, report(modifiers, key))
+            if hold_seconds > 0:
+                time.sleep(hold_seconds)
             self._send(fd, RELEASE)
         finally:
             os.close(fd)
@@ -79,16 +82,20 @@ class UsbKeyboard:
         """Ctrl on its own: wakes the screen and opens the lock screen, and types nothing."""
         self.press(LEFT_CTRL, NO_KEY)
 
-    def type_text(self, text: str) -> None:
+    def type_text(self, text: str, inter_key_delay: float = 0.035) -> None:
         keys = [key_for(c) for c in text]  # check every character before pressing any
-        for modifiers, key in keys:
+        for i, (modifiers, key) in enumerate(keys):
+            if i > 0 and inter_key_delay > 0:
+                time.sleep(inter_key_delay)
             self.press(modifiers, key)
 
     def enter(self) -> None:
         self.press(0, KEY_ENTER)
 
-    def clear(self, count: int) -> None:
-        for _ in range(count):
+    def clear(self, count: int, inter_key_delay: float = 0.02) -> None:
+        for i in range(count):
+            if i > 0 and inter_key_delay > 0:
+                time.sleep(inter_key_delay)
             self.press(0, KEY_BACKSPACE)
 
 

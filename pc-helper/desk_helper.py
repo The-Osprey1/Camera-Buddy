@@ -727,6 +727,11 @@ def install(startup: Path | None = None) -> int:
     if sys.platform != "win32":
         print("The helper only runs on Windows.")
         return 1
+    try:
+        import serial  # noqa: F401
+    except ImportError:
+        print("Error: 'pyserial' is not installed. Please install it with: pip install pyserial")
+        return 1
     script = Path(__file__).resolve()
     program = windowless_python()
     try:

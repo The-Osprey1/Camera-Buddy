@@ -28,8 +28,8 @@ RECOGNIZER = "face_recognition_sface_2021dec.onnx"
 REAL_FACE = "face_antispoof_minifas.onnx"
 MODEL_FILES = (DETECTOR, RECOGNIZER, REAL_FACE)
 
-# The face finder model needs OpenCV 4.8 or newer.
-MIN_OPENCV = (4, 8)
+# The face finder and recognizer models need OpenCV 4.5.4 or newer (standard on Raspberry Pi OS Bookworm).
+MIN_OPENCV = (4, 5, 4)
 # Faces smaller than this many pixels across are too small to recognize.
 MIN_FACE_PIXELS = 40
 # A face darker than this (0 to 255) is too dark to judge.
@@ -177,12 +177,19 @@ class FaceEngine:
             import cv2
         except ImportError as e:
             raise FaceModelsMissing("OpenCV isn't installed (sudo apt install python3-opencv).") from e
-        version = tuple(int(p) for p in cv2.__version__.split(".")[:2])
+        version = tuple(int(p) for p in cv2.__version__.split(".")[:3])
         if version < MIN_OPENCV or not hasattr(cv2, "FaceDetectorYN"):
             raise FaceModelsMissing(
-                f"this Pi's OpenCV ({cv2.__version__}) is too old for the face models. "
-                "Face unlock needs Raspberry Pi OS Trixie or newer."
+                f"this Pi's OpenCV ({cv2.__version__}) is too old for the face models (needs 4.5.4+). "
+                "Run `sudo apt install python3-opencv`."
             )
+        # Take full advantage of the Pi 4B's 4 CPU cores
+        try:
+            cv2.setNumThreads(4)
+            if hasattr(cv2, "setUseOptimized"):
+                cv2.setUseOptimized(True)
+        except Exception:
+            pass
         folder = Path(models_dir)
         missing = [name for name in MODEL_FILES if not (folder / name).exists()]
         if missing:

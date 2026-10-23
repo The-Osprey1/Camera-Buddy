@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 
 from desk_presence import faces
@@ -20,7 +22,8 @@ def test_similarity_is_one_for_you_and_low_for_someone_else():
 def test_faceprint_keeps_numbers_only_and_round_trips(tmp_path):
     path = tmp_path / "face.npz"
     faces.save_faceprint(path, faceprint())
-    assert oct(path.stat().st_mode & 0o777) == "0o600"
+    if sys.platform != "win32":
+        assert oct(path.stat().st_mode & 0o777) == "0o600"
     with np.load(path, allow_pickle=False) as data:
         assert sorted(data.files) == ["vectors", "widths"]
     back = faces.load_faceprint(path)
