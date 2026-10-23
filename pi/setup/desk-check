@@ -1,0 +1,22 @@
+#!/bin/bash
+# desk-check: a guided check of desk presence (the power, keyboard mode and the
+# camera). It tells you on screen when to sit, stand up, walk away and come
+# back, and presses nothing. When the Pi is online it first installs the newest
+# version from GitHub, so fixes arrive by themselves while you set up.
+# It pauses the background program while it uses the camera and starts it again
+# afterwards, even if you stop the check with Ctrl+C.
+
+# Everything is inside main, so an update replacing this file mid-run is harmless.
+main() {
+    if [ "$(id -u)" -eq 0 ]; then
+        echo "Type desk-check without sudo."
+        return 1
+    fi
+    sudo systemctl stop desk-presence
+    trap 'sudo systemctl start desk-presence' EXIT
+    trap ':' INT # Ctrl+C stops the check, not this script
+    sudo /opt/desk-presence/setup/update.sh
+    cd /opt/desk-presence && python3 -m desk_presence --config "$HOME/desk-presence/config.toml" check
+}
+main "$@"
+exit

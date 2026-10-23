@@ -1,10 +1,25 @@
 from desk_presence.config import PresenceSettings, SecondPersonSettings
+from desk_presence.pose import (
+    LEFT_EAR,
+    LEFT_EYE,
+    LEFT_SHOULDER,
+    NOSE,
+    RIGHT_EAR,
+    RIGHT_EYE,
+    RIGHT_SHOULDER,
+    Person,
+)
 from desk_presence.presence import PresenceTracker, State
 from helpers import frame, person
 
 
 def tracker():
     return PresenceTracker(PresenceSettings(), SecondPersonSettings())
+
+
+def only(body, points):
+    """The same body with only these points found."""
+    return Person([kp if i in points else (0.0, 0.0, 0.0) for i, kp in enumerate(body.keypoints)])
 
 
 def test_empty_picture_is_away():
@@ -38,3 +53,26 @@ def test_small_person_far_behind_is_ignored():
 def test_person_close_behind_counts():
     obs = tracker().update(frame(0, [person(), person(x=0.8, scale=0.8)]))
     assert obs.second_person
+
+
+def test_person_leaning_in_beside_you_counts():
+    obs = tracker().update(frame(0, [person(), person(x=0.72, shoulder_y=0.55)]))
+    assert obs.second_person
+
+
+def test_you_reported_twice_count_once():
+    # The pose model sometimes reports the same body twice, almost on top of itself.
+    t = tracker()
+    seen = frame(0, [person(), person(x=0.51, shoulder_y=0.61)])
+    assert len(t.bodies(seen)) == 1
+    assert not t.update(seen).second_person
+
+
+def test_you_split_in_two_count_once():
+    you = person()
+    left = only(you, {LEFT_EYE, LEFT_EAR, LEFT_SHOULDER})
+    right = only(you, {NOSE, RIGHT_EYE, RIGHT_EAR, RIGHT_SHOULDER})
+    t = tracker()
+    seen = frame(0, [left, right])
+    assert len(t.bodies(seen)) == 1
+    assert not t.update(seen).second_person

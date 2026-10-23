@@ -14,4 +14,14 @@ jobs:
           python-version: "3.11"  # same as Raspberry Pi OS Bookworm
       - run: pip install pytest
       - run: python -m pytest -q pi/tests pc-helper/tests
-      - run: bash -n pi/setup/install.sh && bash -n pi/setup/usb-gadget.sh
+      - run: for f in pi/setup/*.sh pi/setup/desk-check; do bash -n "$f" || exit 1; done
+
+  pc-helper-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest pyserial
+      - run: python -m pytest -q pc-helper/tests
