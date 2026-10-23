@@ -8,6 +8,7 @@ from desk_presence.events import EventLog, summarize
 from desk_presence.helper_link import HelperLink
 from desk_presence.keyboard import LEFT_GUI, KEY_L, PracticeKeyboard, UsbKeyboard
 from desk_presence.pause import PauseSwitch
+from desk_presence.presence import State
 from helpers import frame, person
 
 
@@ -98,3 +99,32 @@ def test_pause_from_helper_stops_locking(tmp_path):
         app.handle(frame(i * 0.5))
     assert kb.would_have_pressed == []
     assert helper.sent == [protocol.PAUSED]
+
+
+def test_every_camera_state_has_a_message():
+    assert set(protocol.CAMERA) == {s.value for s in State}
+    assert all(len(m) <= protocol.MAX_LINE for m in protocol.CAMERA.values())
+
+
+def test_camera_reports_reach_the_helper_while_it_listens(tmp_path):
+    settings = config.Settings(event_log=str(tmp_path / "events.jsonl"))
+    helper = FakeHelper()
+    app = DeskPresence(settings, PracticeKeyboard(), helper, EventLog(settings.event_log), clock=lambda: 0)
+    app.handle(frame(0, [person()]))  # no helper yet: nobody to tell
+    helper.pc_locked = False
+    app.handle(frame(0.5, [person()]))
+    app.handle(frame(1.0, [person()]))
+    for i in range(3, 14):
+        app.handle(frame(i * 0.5))
+    app.handle(frame(62.0))  # still nobody, a minute on: said again
+    helper.pc_locked = None
+    app.handle(frame(63.0))
+    helper.pc_locked = False
+    app.handle(frame(64.0))  # the helper is back: said straight away
+    assert helper.sent == [
+        protocol.CAMERA["seated"],
+        protocol.CAMERA["away"],
+        protocol.WOULD_LOCK,
+        protocol.CAMERA["away"],
+        protocol.CAMERA["away"],
+    ]

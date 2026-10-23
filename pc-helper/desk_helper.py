@@ -9,7 +9,8 @@ Runs quietly on the PC and talks to the Pi over the same USB cable:
 It writes what happens to helper.log next to this file: the Pi's messages, when the PC was
 locked and unlocked, and how long before each lock the keyboard and mouse were last used.
 So in practice mode you can tell a right "would have locked" (you had been gone a while)
-from a wrong one (you were typing a second before).
+from a wrong one (you were typing a second before). The Pi also says what its camera sees
+(sitting, standing, nobody, too dark), and those lines sum that up too.
 
 It only sends and accepts a few fixed messages, so the cable can't be used to run anything.
 
@@ -30,6 +31,8 @@ import subprocess
 import sys
 import threading
 import time
+from collections import Counter, deque
+from itertools import islice
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -39,6 +42,8 @@ PI_PRODUCT_ID = 0x0104
 
 STATUS_EVERY = 2.0
 MAX_LINE = 32
+# A message the Pi doesn't take within this long is dropped, so the helper never freezes.
+WRITE_TIMEOUT = 1.0
 # Keyboard and mouse unused for this long, with the PC unlocked, gets a line in the log
 # when you're back, so a time you left and nothing locked shows up too.
 LONG_IDLE = 120.0
@@ -56,6 +61,18 @@ FROM_PI = {
     "LOCKING": ("Locking: you walked away", (500, 80)),
     "WOULD_LOCK": ("Practice mode: would have locked now", (500, 60)),
 }
+# What the Pi's camera sees, sent when it changes and once a minute. Not logged one by one;
+# the lines for would-be locks and long spells of not using the PC sum them up.
+CAMERA = {
+    "CAMERA SEATED": "sitting",
+    "CAMERA STOOD_UP": "standing",
+    "CAMERA AWAY": "nobody",
+    "CAMERA TOO_DARK": "too dark",
+}
+# No word from the camera for this long means it has stopped reporting.
+CAMERA_QUIET = 90.0
+# The helper's own checks stopping for this long means the PC was asleep.
+ASLEEP_GAP = 30.0
 
 log = logging.getLogger("desk_helper")
 
@@ -68,7 +85,7 @@ def parse_from_pi(line: bytes) -> str | None:
         message = line.decode("ascii").strip()
     except UnicodeDecodeError:
         return None
-    return message if message in FROM_PI else None
+    return message if message in FROM_PI or message in CAMERA else None
 
 
 def span(seconds: float) -> str:
@@ -82,8 +99,66 @@ def span(seconds: float) -> str:
 
 
 def last_used(idle: float | None) -> str:
-    """' (keyboard and mouse last used 8 s ago)', or nothing if Windows won't say."""
-    return "" if idle is None else f" (keyboard and mouse last used {span(idle)} ago)"
+    """'keyboard and mouse last used 8 s ago', or nothing if Windows won't say."""
+    return "" if idle is None else f"keyboard and mouse last used {span(idle)} ago"
+
+
+def aside(*notes: str) -> str:
+    """' (a; b)' from whichever notes aren't empty, or nothing."""
+    kept = [n for n in notes if n]
+    return f" ({'; '.join(kept)})" if kept else ""
+
+
+class CameraLog:
+    """What the Pi's camera saw, second by second, for summing up in the log."""
+
+    KEEP = 6 * 3600  # seconds
+
+    def __init__(self):
+        self.seeing: str | None = None  # what it said last
+        self.heard_at: float | None = None
+        self.changes = 0  # since the last whole second
+        self.second: int | None = None
+        # (what it saw, how many changes) for each second; None while it wasn't reporting.
+        self.seconds: deque[tuple[str | None, int]] = deque(maxlen=self.KEEP)
+
+    def reporting(self, now: float) -> bool:
+        return self.heard_at is not None and now - self.heard_at <= CAMERA_QUIET
+
+    def tick(self, now: float) -> None:
+        second = int(now)
+        if self.second is None or second < self.second:  # first tick, or the clock was set back
+            self.second = second
+            return
+        seeing = self.seeing if self.reporting(now) else None
+        for _ in range(min(second - self.second, self.KEEP)):
+            self.seconds.append((seeing, self.changes))
+            self.changes = 0
+        self.second = second
+
+    def heard(self, seeing: str, now: float) -> None:
+        self.tick(now)
+        if self.seeing is not None and seeing != self.seeing:
+            self.changes += 1
+        self.seeing, self.heard_at = seeing, now
+
+    def summary(self, since: float, now: float) -> str:
+        """'sitting 41 s, nobody 19 s, 7 changes' since then, or nothing if the camera never said."""
+        if self.heard_at is None:
+            return ""
+        self.tick(now)
+        recent = list(islice(reversed(self.seconds), max(0, int(now) - int(since))))
+        if not recent:
+            return ""
+        parts = []
+        for seeing, n in Counter(seeing for seeing, _ in recent).most_common():
+            amount = f"{n} s" if len(recent) <= 120 else f"{round(100 * n / len(recent))}%"
+            if amount != "0%":
+                parts.append(f"{seeing or 'no report'} {amount}")
+        changes = sum(c for _, c in recent)
+        if changes:
+            parts.append(f"{changes} change{'' if changes == 1 else 's'}")
+        return ", ".join(parts)
 
 
 if sys.platform == "win32":
@@ -290,6 +365,13 @@ class Helper:
         self.locked_at = 0.0
         # When you last used the keyboard or mouse, while they've been unused for LONG_IDLE.
         self.idle_from: float | None = None
+        self.camera = CameraLog()
+        # Since when the camera has said nothing, once that's written down.
+        self.camera_quiet_since: float | None = None
+        # Since when the Pi could hear the helper (connected, and the PC awake).
+        self.awake_since = clock()
+        self.last_check: float | None = None
+        self.pi_not_reading = False
 
     def send(self, message: str) -> None:
         assert message in TO_PI
@@ -305,9 +387,17 @@ class Helper:
             log.warning("Could not reach the Pi: %s", e)
 
     def on_message(self, message: str) -> None:
+        now = self.clock()
+        if message in CAMERA:
+            if self.camera_quiet_since is not None:
+                log.info("The Pi's camera is reporting again after %s", span(now - self.camera_quiet_since))
+                self.camera_quiet_since = None
+            self.camera.heard(CAMERA[message], now)
+            return
         text, *tones = FROM_PI[message]
         if message in ("WOULD_LOCK", "LOCKING"):
-            text += last_used(seconds_since_input())
+            seen = self.camera.summary(now - 60, now)
+            text += aside(last_used(seconds_since_input()), seen and f"camera in the last minute: {seen}")
             if self.locked:
                 # The Pi never locks a PC it knows is locked.
                 text += ", but the PC was already locked: is the Pi hearing the helper?"
@@ -319,9 +409,13 @@ class Helper:
         locked = pc_is_locked()
         idle = seconds_since_input()
         now = self.clock()
+        if self.last_check is not None and now - self.last_check > ASLEEP_GAP:
+            self.awake_since = now  # the PC was asleep, so the Pi couldn't hear the helper
+        self.last_check = now
+        self.camera.tick(now)
         if locked != self.locked:
             if locked:
-                log.info("PC locked%s", last_used(idle))
+                log.info("PC locked%s", aside(last_used(idle)))
             elif self.locked:
                 log.info("PC unlocked after %s", span(now - self.locked_at))
             self.locked, self.locked_at = locked, now
@@ -332,31 +426,64 @@ class Helper:
                 self.idle_from = now - idle
         elif self.idle_from is not None:
             since = time.strftime("%H:%M:%S", time.localtime(self.idle_from))
-            log.info("Keyboard and mouse used again after %s unused (since %s)", span(now - idle - self.idle_from), since)
+            seen = self.camera.summary(self.idle_from, now)
+            log.info(
+                "Keyboard and mouse used again after %s unused%s",
+                span(now - idle - self.idle_from),
+                aside(f"since {since}", seen and f"camera: {seen}"),
+            )
             self.idle_from = None
+        self.check_camera(now)
         return locked
+
+    def check_camera(self, now: float) -> None:
+        """Writes down, once, that the Pi's camera has stopped reporting."""
+        if self.camera.heard_at is None or self.camera_quiet_since is not None:
+            return
+        since = max(self.camera.heard_at, self.awake_since)
+        if now - since > CAMERA_QUIET:
+            at = time.strftime("%H:%M:%S", time.localtime(since))
+            log.info("The Pi's camera has said nothing since %s: is desk presence running on the Pi?", at)
+            self.camera_quiet_since = since
 
     def run_connected(self, name: str) -> None:
         import serial
 
-        with serial.Serial(name, timeout=0.2) as port:
+        with serial.Serial(name, timeout=0.2, write_timeout=WRITE_TIMEOUT) as port:
             self.port = port
             log.info("Connected to the Pi on %s", name)
-            last_sent, last_state = 0.0, None
             try:
-                while not self.stop.is_set():
-                    locked = self.check_pc()
-                    now = time.monotonic()
-                    if locked != last_state or now - last_sent >= STATUS_EVERY:
-                        self.send("LOCKED" if locked else "UNLOCKED")
-                        last_sent, last_state = now, locked
-                    line = port.readline(MAX_LINE + 2)
-                    if line:
-                        message = parse_from_pi(line)
-                        if message:
-                            self.on_message(message)
+                self.talk(port, serial.SerialTimeoutException)
             finally:
                 self.port = None
+
+    def talk(self, port, write_timeout: type[Exception]) -> None:
+        """Tells the Pi whether the PC is locked and handles what it says, until stopped."""
+        self.awake_since = self.clock()
+        last_sent, last_state = 0.0, None
+        while not self.stop.is_set():
+            locked = self.check_pc()
+            now = time.monotonic()
+            if locked != last_state or now - last_sent >= STATUS_EVERY:
+                self.send_status("LOCKED" if locked else "UNLOCKED", write_timeout)
+                last_sent, last_state = now, locked
+            line = port.readline(MAX_LINE + 2)
+            if line:
+                message = parse_from_pi(line)
+                if message:
+                    self.on_message(message)
+
+    def send_status(self, status: str, write_timeout: type[Exception]) -> None:
+        try:
+            self.send(status)
+        except write_timeout:
+            if not self.pi_not_reading:
+                log.info("The Pi isn't taking messages: is desk presence running on the Pi?")
+                self.pi_not_reading = True
+            return
+        if self.pi_not_reading:
+            log.info("The Pi is taking messages again")
+            self.pi_not_reading = False
 
     def run(self) -> None:
         import serial

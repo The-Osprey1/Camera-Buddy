@@ -14,9 +14,13 @@ from .keyboard import PracticeKeyboard, UsbKeyboard
 from .pause import PauseSwitch
 from .policy import LockPolicy
 from .pose import Frame
-from .presence import PresenceTracker, State
+from .presence import Observation, PresenceTracker, State
 
 log = logging.getLogger(__name__)
+
+# What the camera sees goes to the PC helper's log when it changes, and again this
+# often so the helper can tell the Pi is still watching.
+CAMERA_EVERY = 60.0
 
 
 class DeskPresence:
@@ -30,6 +34,8 @@ class DeskPresence:
         self.policy = LockPolicy(settings.presence, settings.second_person)
         self.pause = PauseSwitch(settings.pause_seconds)
         self.state: State | None = None
+        self.camera_sent: State | None = None
+        self.camera_sent_at = float("-inf")
 
     def toggle_pause(self) -> None:
         paused = self.pause.toggle(self.clock())
@@ -55,6 +61,7 @@ class DeskPresence:
             self.helper.send(protocol.RESUMED)
 
         pc_locked = self.helper.pc_locked
+        self.report_camera(obs, pc_locked)
         for decision in self.policy.step(obs, pc_locked, paused):
             if decision.action == "warn_second_person":
                 self.events.write("second_person", reason=decision.reason)
@@ -74,6 +81,15 @@ class DeskPresence:
                         log.warning("Could not press Windows+L: %s", e)
                     else:
                         self.events.write("locked", reason=decision.reason)
+
+    def report_camera(self, obs: Observation, pc_locked: bool | None) -> None:
+        if pc_locked is None:
+            # Nobody to tell: the helper isn't running, or the PC is asleep. Say it again once it's back.
+            self.camera_sent = None
+            return
+        if obs.state is not self.camera_sent or obs.time - self.camera_sent_at >= CAMERA_EVERY:
+            self.helper.send(protocol.CAMERA[obs.state.value])
+            self.camera_sent, self.camera_sent_at = obs.state, obs.time
 
     def run(self, frames: Iterable[Frame]) -> None:
         self.events.write("started", practice_mode=self.settings.practice_mode)

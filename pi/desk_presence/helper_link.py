@@ -14,6 +14,9 @@ log = logging.getLogger(__name__)
 # The helper sends the lock status every 2 seconds. If it goes quiet for this
 # long, the Pi treats the lock status as unknown.
 STALE_SECONDS = 10.0
+# A message the PC doesn't take within this long is dropped, so a PC that isn't
+# reading (helper not running, PC asleep) can never hold the Pi up.
+WRITE_TIMEOUT = 0.1
 
 
 class HelperLink:
@@ -52,7 +55,7 @@ class HelperLink:
             return
         try:
             port.write((message + "\n").encode("ascii"))
-        except OSError as e:
+        except OSError as e:  # including pyserial's write timeout
             log.debug("Could not send to PC helper: %s", e)
 
     def start(self) -> None:
@@ -63,7 +66,7 @@ class HelperLink:
 
         while True:
             try:
-                with serial.Serial(self.device, timeout=1) as port:
+                with serial.Serial(self.device, timeout=1, write_timeout=WRITE_TIMEOUT) as port:
                     self._port = port
                     log.info("Listening for the PC helper on %s", self.device)
                     while True:

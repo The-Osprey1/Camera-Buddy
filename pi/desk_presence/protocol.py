@@ -15,7 +15,14 @@ RESUMED = "RESUMED"
 WARN_SECOND_PERSON = "WARN SECOND_PERSON"
 LOCKING = "LOCKING"
 WOULD_LOCK = "WOULD_LOCK"
-FROM_PI = {PAUSED, RESUMED, WARN_SECOND_PERSON, LOCKING, WOULD_LOCK}
+# What the camera sees (by presence.State value), for the helper's log.
+CAMERA = {
+    "seated": "CAMERA SEATED",
+    "stood_up": "CAMERA STOOD_UP",
+    "away": "CAMERA AWAY",
+    "too_dark": "CAMERA TOO_DARK",
+}
+FROM_PI = {PAUSED, RESUMED, WARN_SECOND_PERSON, LOCKING, WOULD_LOCK, *CAMERA.values()}
 
 MAX_LINE = 32
 
