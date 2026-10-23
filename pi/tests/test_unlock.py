@@ -257,7 +257,8 @@ class FakeHelper:
         return None if self.status is None else self.status != protocol.UNLOCKED
 
     def send(self, m):
-        self.sent.append(m)
+        if m not in protocol.CAMERA.values():  # tested in test_parts
+            self.sent.append(m)
 
 
 def events_in(path):

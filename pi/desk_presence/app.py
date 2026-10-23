@@ -23,6 +23,9 @@ log = logging.getLogger(__name__)
 LOOK_EVERY = 0.15
 # Ask the PC helper for your PIN at most this often while the Pi doesn't have it.
 ASK_PIN_EVERY = 60.0
+# What the camera sees goes to the PC helper's log when it changes, and again this
+# often so the helper can tell the Pi is still watching.
+CAMERA_EVERY = 60.0
 
 
 class DeskPresence:
@@ -47,6 +50,8 @@ class DeskPresence:
         self.policy = LockPolicy(settings.presence, settings.second_person)
         self.pause = PauseSwitch(settings.pause_seconds)
         self.state: State | None = None
+        self.camera_sent: State | None = None
+        self.camera_sent_at = float("-inf")
         self.face_engine = face_engine
         self.faceprint = faceprint
         live = settings.unlock.mode == "on" and not settings.practice_mode
@@ -94,6 +99,7 @@ class DeskPresence:
             self.helper.send(protocol.RESUMED)
 
         pc_locked = self.helper.pc_locked
+        self.report_camera(obs, pc_locked)
         for decision in self.policy.step(obs, pc_locked, paused):
             if decision.action == "warn_second_person":
                 self.events.write("second_person", reason=decision.reason)
@@ -179,6 +185,15 @@ class DeskPresence:
             self.unlock.unlock_failed()
             self.events.write("unlock_failed", reason="still locked after typing the PIN", **details)
             self.helper.send(protocol.UNLOCK_FAILED)
+
+    def report_camera(self, obs: Observation, pc_locked: bool | None) -> None:
+        if pc_locked is None:
+            # Nobody to tell: the helper isn't running, or the PC is asleep. Say it again once it's back.
+            self.camera_sent = None
+            return
+        if obs.state is not self.camera_sent or obs.time - self.camera_sent_at >= CAMERA_EVERY:
+            self.helper.send(protocol.CAMERA[obs.state.value])
+            self.camera_sent, self.camera_sent_at = obs.state, obs.time
 
     def run(self, frames: Iterable[Frame]) -> None:
         unlock = self.settings.unlock.mode if self.unlock.active else "off"

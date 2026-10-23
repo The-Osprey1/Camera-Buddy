@@ -34,9 +34,17 @@ FACE_REFUSED = "FACE_REFUSED"
 NOT_RECOGNIZED = "NOT_RECOGNIZED"
 NEED_PIN = "NEED_PIN"
 PIN_OK = "PIN_OK"
+# What the camera sees (by presence.State value), for the helper's log.
+CAMERA = {
+    "seated": "CAMERA SEATED",
+    "stood_up": "CAMERA STOOD_UP",
+    "away": "CAMERA AWAY",
+    "too_dark": "CAMERA TOO_DARK",
+}
 FROM_PI = {
     PAUSED, RESUMED, WARN_SECOND_PERSON, LOCKING, WOULD_LOCK,
     UNLOCKING, WOULD_UNLOCK, UNLOCK_FAILED, FACE_REFUSED, NOT_RECOGNIZED, NEED_PIN, PIN_OK,
+    *CAMERA.values(),
 }
 
 MAX_LINE = 32

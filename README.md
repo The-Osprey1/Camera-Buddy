@@ -82,13 +82,13 @@ Locking works without it. The helper adds the Ctrl + Alt + P pause switch and th
 2. Copy the `pc-helper` folder somewhere on the PC.
 3. Double-click `start-helper.cmd` in that folder. It finds Python, installs pyserial the first time, adds the helper to your Startup apps (so it runs without a window every time you log in) and starts it. It should end with "All set: it hears the Pi". After an update, double-click it again to restart the helper.
 
-Its log is `helper.log` in the same folder: every message from the Pi, when the PC was locked and unlocked, how long before each lock you last used the keyboard or mouse, and each time you came back after more than 2 minutes away from them.
+Its log is `helper.log` in the same folder: every message from the Pi, when the PC was locked and unlocked, how long before each lock you last used the keyboard or mouse, and each time you came back after more than 2 minutes away from them. Those last lines also say what the Pi's camera saw at the time (sitting, standing, nobody or too dark), and the log notes when the camera stops reporting.
 
 To run it in a window instead: `py desk_helper.py`. To stop it and take it out of your Startup apps: `py desk_helper.py --uninstall` (or turn it off in Task Manager, under Startup apps).
 
 ## Practice week, then going live
 
-Each day, check what it would have done. On the PC, `helper.log` lists each "would have locked now" with how long before it you last used the keyboard or mouse: a few seconds means you were still there. On the Pi:
+Each day, check what it would have done. On the PC, `helper.log` lists each "would have locked now" with how long before it you last used the keyboard or mouse (a few seconds means you were still there) and what the camera saw in the minute before. On the Pi:
 
 ```
 cd /opt/desk-presence && python3 -m desk_presence --config ~/desk-presence/config.toml log
@@ -133,7 +133,7 @@ Needs Raspberry Pi OS Trixie or newer (OpenCV 4.8+).
 The Pi and the helper only ever send these lines, and ignore anything else:
 
 - PC to Pi: `LOCKED`, `LOCK_SCREEN` (the real lock screen) or `UNLOCKED` (every 2 seconds), `PAUSE` (toggle), and `PIN` followed by 4 to 20 letters and digits (only after the Pi asks, and only what you typed into the PIN box)
-- Pi to PC: `PAUSED`, `RESUMED`, `WARN SECOND_PERSON`, `LOCKING`, `WOULD_LOCK`, `UNLOCKING`, `WOULD_UNLOCK`, `UNLOCK_FAILED`, `FACE_REFUSED`, `NOT_RECOGNIZED`, `NEED_PIN`, `PIN_OK`
+- Pi to PC: `PAUSED`, `RESUMED`, `WARN SECOND_PERSON`, `LOCKING`, `WOULD_LOCK`, `UNLOCKING`, `WOULD_UNLOCK`, `UNLOCK_FAILED`, `FACE_REFUSED`, `NOT_RECOGNIZED`, `NEED_PIN`, `PIN_OK`, and what the camera sees when it changes and once a minute: `CAMERA SEATED`, `CAMERA STOOD_UP`, `CAMERA AWAY`, `CAMERA TOO_DARK`
 
 ## Running the tests
 
