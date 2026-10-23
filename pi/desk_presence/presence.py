@@ -48,6 +48,7 @@ class PresenceTracker:
 
         bodies = self.bodies(frame)
         if not bodies:
+            self.seated_shoulder_y = None
             return Observation(frame.time, State.AWAY)
 
         score = self.p.min_keypoint_score
@@ -65,6 +66,6 @@ class PresenceTracker:
             elif self.seated_shoulder_y - shoulder > self.p.stand_rise:
                 state = State.STOOD_UP
             else:
-                # Follow slow changes in how you sit (or where the camera points).
-                self.seated_shoulder_y = 0.98 * self.seated_shoulder_y + 0.02 * shoulder
+                # Follow very slow changes in posture without chasing someone standing up.
+                self.seated_shoulder_y = 0.995 * self.seated_shoulder_y + 0.005 * shoulder
         return Observation(frame.time, state, second)

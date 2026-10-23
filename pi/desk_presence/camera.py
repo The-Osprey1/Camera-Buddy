@@ -1,13 +1,14 @@
 """Runs the body pose model on the AI Camera's own chip and hands back Frames.
 
-Only the model's results reach this code: no pictures are saved or sent anywhere.
+Only the model's results reach this code, plus the picture itself while face unlock
+is looking for you. No pictures are saved or sent anywhere.
 Needs the camera software on the Pi: `sudo apt install imx500-all python3-picamera2`.
 """
 
 from __future__ import annotations
 
 import time
-from typing import Iterator
+from typing import Callable, Iterator
 
 import numpy as np
 
@@ -30,8 +31,11 @@ class PoseCamera:
         intrinsics.task = "pose estimation"
         intrinsics.update_with_defaults()
         self.picam2 = Picamera2(self.imx500.camera_num)
+        # BGR in OpenCV's terms (picamera2 calls it RGB888), at the size the pose results use.
         config = self.picam2.create_preview_configuration(
-            controls={"FrameRate": intrinsics.inference_rate}, buffer_count=12
+            main={"format": "RGB888", "size": (MODEL_SIZE_H_W[1], MODEL_SIZE_H_W[0])},
+            controls={"FrameRate": intrinsics.inference_rate},
+            buffer_count=12,
         )
         # The first start uploads the model to the camera, which can take a minute.
         self.picam2.start(config, show_preview=False)
@@ -58,12 +62,21 @@ class PoseCamera:
             people.append(Person([(x / w, y / h, s) for x, y, s in rows.tolist()]))
         return people
 
-    def frames(self) -> Iterator[Frame]:
+    def frames(self, wants_images: Callable[[], bool] = lambda: False) -> Iterator[Frame]:
         while True:
-            metadata = self.picam2.capture_metadata()
+            image = None
+            if wants_images():
+                request = self.picam2.capture_request()
+                try:
+                    metadata = request.get_metadata()
+                    image = request.make_array("main")
+                finally:
+                    request.release()
+            else:
+                metadata = self.picam2.capture_metadata()
             people = self._people(metadata)
             if people is None:
                 continue
             lux = metadata.get("Lux")
-            yield Frame(time.monotonic(), people, float(lux) if lux is not None else None)
+            yield Frame(time.monotonic(), people, float(lux) if lux is not None else None, image)
 
