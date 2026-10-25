@@ -17,7 +17,7 @@ USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)" || {
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 
 # python3-opencv and python3-munkres are needed by picamera2's decoder for the pose model's results.
-PACKAGES=(imx500-all python3-picamera2 python3-opencv python3-munkres python3-serial python3-gpiozero python3-numpy)
+PACKAGES=(imx500-all python3-picamera2 python3-opencv python3-munkres python3-serial python3-gpiozero python3-numpy python3-luma.oled python3-pil i2c-tools)
 MISSING=no
 for p in "${PACKAGES[@]}"; do
     dpkg-query -W -f='${Status}' "$p" 2>/dev/null | grep -q "ok installed" || MISSING=yes
@@ -55,8 +55,15 @@ if ! grep -q '^dtoverlay=dwc2,dr_mode=peripheral' "$BOOT_CONFIG"; then
     RESTART_NEEDED=yes
 fi
 printf 'dwc2\nlibcomposite\n' > /etc/modules-load.d/desk-presence.conf
+echo "Enabling I2C for the optional OLED display..."
+# Always enable the header bus, including for older configs with no [display]
+# section. raspi-config handles the active boot-file sections idempotently.
+raspi-config nonint do_i2c 0
+printf 'i2c-dev\n' > /etc/modules-load.d/desk-presence-i2c.conf
+modprobe i2c-dev || true
+[ -e /dev/i2c-1 ] || RESTART_NEEDED=yes
 cp "$HERE/setup/99-desk-presence.rules" /etc/udev/rules.d/
-usermod -aG plugdev,dialout,video "$USER_NAME"
+usermod -aG plugdev,dialout,video,i2c "$USER_NAME"
 
 echo "Setting up your settings file..."
 mkdir -p "$USER_HOME/desk-presence"
@@ -76,7 +83,7 @@ systemctl try-restart desk-presence.service
 
 echo
 if [ "$RESTART_NEEDED" = yes ]; then
-    echo "Done. Restart the Pi (sudo reboot) to switch on keyboard mode."
+    echo "Done. Restart the Pi (sudo reboot) to switch on keyboard mode and I2C."
     echo "It starts in practice mode: it only writes down what it would do."
 else
     echo "Done."

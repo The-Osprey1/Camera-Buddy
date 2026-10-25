@@ -74,6 +74,116 @@ The Pi can do steps 1 and 2 by itself from the SD card:
 4. Put the card in the Pi and switch it on. It waits for the Wi-Fi, updates itself, installs everything and restarts, which can take half an hour. It writes its progress to `desk-presence-setup.log` on the boot drive.
 5. From the PC, log in with `ssh yourname@deskcam.local` and carry on from step 3.
 
+## Optional OLED beneath the camera
+
+See the [wiring diagram and pin-by-pin guide](docs/wiring.md) and the
+[application flowchart and integration guide](docs/system-flow.md).
+
+Camera-Buddy supports a **0.96-inch, 128x64 SSD1306 OLED with four I2C pins**.
+Mount it just beneath the camera, facing you, without covering the lens or putting
+strain on the camera ribbon. Keep the back of the display insulated from exposed
+contacts. This is a monochrome text status screen; it does not show or store camera
+pictures, faceprints, or your Windows PIN.
+
+Switch the Pi off before wiring. Check the module's specifications confirm **3.3 V
+power support**. Connect by the labels printed on the module: different boards put
+the pins in different orders.
+
+| OLED label | Raspberry Pi physical header pin | Function |
+| --- | --- | --- |
+| VCC / VDD | 1 | 3.3 V |
+| GND | 6 | Ground |
+| SDA | 3 | GPIO 2, I2C data |
+| SCL / SCK | 5 | GPIO 3, I2C clock |
+
+These are **physical pin numbers**, not BCM GPIO numbers. Reserve BCM 2 and 3 for
+I2C; wire an optional pause button to another GPIO. Do not connect a module with
+5 V signal pull-ups directly to the Pi's GPIO. See the
+[Luma.OLED wiring reference](https://luma-oled.readthedocs.io/en/stable/hardware.html).
+
+The installer/update installs the OLED software, enables I2C, and grants the
+service account access. Reboot if requested. The display connects automatically,
+including with an older configuration file that has no `[display]` section.
+If it is absent or unplugged, the camera and locking continue; the display worker
+retries every 30 seconds.
+
+The fixed screen uses a large, left-aligned detection label, a quiet mode/PC
+header, one message strip, aligned diagnostic columns, and a face-feedback footer.
+Warnings and pause states use an inverted strip so they stand out without flashing.
+The screen shows:
+
+- A large **SEATED**, **STANDING**, **NO PERSON**, or **TOO DARK** label.
+- **PRACTICE** or **LIVE**, and the PC helper's lock status (`?` means unknown).
+- People counted after duplicate detections are merged, estimated lux (`?` if
+  unavailable), and how many of the main person's seven head/shoulder points are
+  visible. The compact columns are **P** (people), **L** (lux), and **KP** (visible
+  keypoints out of seven). These are diagnostic measurements, not a recognition
+  certainty score.
+- Pause time, low-light/second-person warnings, or the remaining absence countdown
+  when the lock policy is armed. Practice countdowns say **TEST LOCK IN**.
+- Face-unlock checks, match progress, and results. The five-segment indicator
+  shows progress through the required matching checks, not identity confidence.
+  **TEST** / **WOULD UNLOCK** means
+  face practice, even if presence locking is live. The minimum match duration
+  still applies after the segment indicator fills. **FACE NOT READY** means no
+  face is enrolled, models are missing, or a face check failed. **UNLOCK PC
+  MANUALLY** means unlock Windows yourself before automatic unlock can resume.
+
+![OLED layout: detection, lock countdown, low light, pause, second-person warning and manual unlock](docs/oled-layout.png)
+
+Pause and current warnings take priority over brief action messages, which last
+three seconds. **STARTING** appears during camera/model startup. **CAMERA WAIT**
+replaces old detections after 15 seconds without processed frames; **CAM ERROR**
+means camera processing failed. The display never changes the lock/unlock rules.
+
+To change the screen, add this section at the end of
+`~/desk-presence/config.toml` (or edit the existing section), then restart the
+service with `sudo systemctl restart desk-presence`:
+
+```toml
+[display]
+enabled = true
+i2c_bus = 1
+address = 0x3c # Set 0x3d if that is your module's address.
+rotate = 0    # Set 180 for upside-down mounting.
+```
+
+Set `enabled = false` to disable display access. This does not disable the Pi's
+I2C interface. The driver is for SSD1306; visually similar SH1106 modules are not
+interchangeable with this configuration.
+
+### Checking the OLED
+
+`desk-check` shows the current detection, what to do next, and the step countdown
+on the OLED as well as printing its usual report. `camera-test` also shows current
+detections. These diagnostics press no keys; face recognition is not run during
+these camera checks.
+
+To check wiring, text, all four screen edges, and the configured rotation without
+opening the camera or accessing the USB keyboard:
+
+```sh
+sudo systemctl stop desk-presence
+cd /opt/desk-presence
+python3 -m desk_presence --config ~/desk-presence/config.toml oled-test
+sudo systemctl start desk-presence
+```
+
+The test runs for ten seconds and clears the screen. Restart the service even if
+you interrupt the test. Stopping the service first prevents two programs writing
+to the display simultaneously.
+
+If the screen stays blank, check its pin labels and 3.3 V compatibility, reboot
+after installation, and run `i2cdetect -y 1` with the service stopped. A typical
+module appears at `3c`; use `address = 0x3d` if it appears at `3d`. Check that
+`/dev/i2c-1` exists and `groups` includes `i2c`; log out and back in after adding
+group membership for an interactive test. Installation already restarts the
+service with its updated groups. Check `journalctl -u desk-presence -n 50` for
+OLED connection errors. No address usually means wiring/power or I2C setup;
+scrambled or shifted output can mean a different controller such as SH1106.
+Mounting readability, orientation, and operation after unplugging the module
+must be verified on the physical Pi/display.
+
 ## Setting up the PC helper (optional, recommended)
 
 Locking works without it. The helper adds the Ctrl + Alt + P pause switch and the beeps, tells the Pi when the PC is already locked, and keeps the log that shows whether each practice "would have locked" was right.
@@ -138,7 +248,7 @@ The Pi and the helper only ever send these lines, and ignore anything else:
 ## Running the tests
 
 ```
-pip install pytest
+pip install pytest numpy pillow pyserial
 python -m pytest pi/tests pc-helper/tests
 ```
 

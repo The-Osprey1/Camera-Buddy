@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1210" viewBox="0 0 1400 1210" role="img" aria-labelledby="title desc">
+<title id="title">Camera-Buddy wiring diagram</title>
+<desc id="desc">SSD1306 VCC to Raspberry Pi physical pin 1 at 3.3 volts, GND to pin 6, SDA to pin 3 GPIO 2, SCL to pin 5 GPIO 3. AI Camera uses CSI. Pi supply and PC USB data use a suitable splitter.</desc>
+<rect width="1400" height="1210" fill="#f7fafc"/>
+<text x="60" y="38" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700" fill="#17263c">Camera-Buddy / wiring diagram</text>
+<text x="60" y="91" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="400" fill="#526176">Connect by printed module labels. Physical pin numbers and BCM GPIO numbers are different.</text>
+<rect x="60" y="190" width="500" height="610" rx="10" fill="#eef7f3" stroke="#087f5b" stroke-width="2"/>
+<text x="88" y="218" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="28" font-weight="700" fill="#17263c">Raspberry Pi 4B</text>
+<text x="88" y="265" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">First six header pins — numbered inset</text>
+<text x="100" y="310" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="700" fill="#17263c">1   3V3</text>
+<text x="332" y="310" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">2   5V (unused)</text>
+<text x="100" y="347" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="700" fill="#17263c">3   SDA / GPIO 2</text>
+<text x="332" y="347" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">4   5V (unused)</text>
+<text x="100" y="384" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="700" fill="#17263c">5   SCL / GPIO 3</text>
+<text x="332" y="384" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">6   GND</text>
+<text x="88" y="430" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" fill="#526176">SELECTED PHYSICAL PINS</text>
+<rect x="940" y="190" width="400" height="130" rx="10" fill="white" stroke="#087f5b" stroke-width="2"/>
+<text x="962" y="215" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="23" font-weight="700" fill="#17263c">Raspberry Pi AI Camera</text>
+<text x="962" y="257" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">CSI camera ribbon; separate from I2C.</text>
+<polyline points="560,245 940,245" fill="none" stroke="#087f5b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="940,245 928.4096122534608,250.88752170992788 928.4096122534608,239.11247829007212" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<polygon points="560,245 571.5903877465392,239.11247829007212 571.5903877465392,250.88752170992788" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<text x="675" y="216" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="400" fill="#087f5b">CSI ribbon</text>
+<rect x="940" y="390" width="400" height="410" rx="10" fill="#f0f5ff" stroke="#2563eb" stroke-width="2"/>
+<text x="963" y="415" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="24" font-weight="700" fill="#17263c">SSD1306 OLED / 128 x 64</text>
+<rect x="1065" y="473" width="250" height="126" rx="5" fill="#10191f" stroke="#10191f" stroke-width="2"/>
+<text x="1085" y="492" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="31" font-weight="700" fill="white">SEATED</text>
+<text x="1085" y="543" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#bcd3df">Status display</text>
+<text x="963" y="745" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="400" fill="#526176">Pin positions here are schematic.</text>
+<text x="963" y="770" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="400" fill="#526176">Match your module labels, not this order.</text>
+<text x="100" y="482" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700" fill="#17263c">PIN 1</text>
+<text x="269" y="484" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="400" fill="#c33644">3.3 V</text>
+<circle cx="560" cy="495" r="6" fill="#c33644"/>
+<polyline points="560,495 940,495" fill="none" stroke="#c33644" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="940" cy="495" r="6" fill="#c33644"/>
+<text x="750" y="467" dominant-baseline="hanging" text-anchor="middle" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="#c33644">3.3 V</text>
+<text x="962" y="485" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" fill="#17263c">VCC / VDD</text>
+<text x="100" y="552" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700" fill="#17263c">PIN 6</text>
+<text x="269" y="554" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="400" fill="#374151">Ground</text>
+<circle cx="560" cy="565" r="6" fill="#374151"/>
+<polyline points="560,565 940,565" fill="none" stroke="#374151" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="940" cy="565" r="6" fill="#374151"/>
+<text x="750" y="537" dominant-baseline="hanging" text-anchor="middle" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="#374151">GROUND</text>
+<text x="962" y="555" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" fill="#17263c">GND</text>
+<text x="100" y="622" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700" fill="#17263c">PIN 3</text>
+<text x="269" y="624" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="400" fill="#2563eb">GPIO 2 / SDA</text>
+<circle cx="560" cy="635" r="6" fill="#2563eb"/>
+<polyline points="560,635 940,635" fill="none" stroke="#2563eb" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="940" cy="635" r="6" fill="#2563eb"/>
+<text x="750" y="607" dominant-baseline="hanging" text-anchor="middle" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="#2563eb">I2C DATA</text>
+<text x="962" y="625" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" fill="#17263c">SDA</text>
+<text x="100" y="692" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="21" font-weight="700" fill="#17263c">PIN 5</text>
+<text x="269" y="694" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="400" fill="#087f5b">GPIO 3 / SCL</text>
+<circle cx="560" cy="705" r="6" fill="#087f5b"/>
+<polyline points="560,705 940,705" fill="none" stroke="#087f5b" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="940" cy="705" r="6" fill="#087f5b"/>
+<text x="750" y="677" dominant-baseline="hanging" text-anchor="middle" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="#087f5b">I2C CLOCK</text>
+<text x="962" y="695" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="700" fill="#17263c">SCL / SCK</text>
+<text x="88" y="765" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="400" fill="#526176">Locate header pin 1 using the official Pi pinout.</text>
+<rect x="285" y="791" width="80" height="19" rx="3" fill="#17263c" stroke="#17263c" stroke-width="2"/>
+<text x="375" y="815" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="400" fill="#526176">Pi USB-C</text>
+<rect x="60" y="930" width="340" height="85" rx="10" fill="white" stroke="#c33644" stroke-width="2"/>
+<text x="80" y="946" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">5 V / 3 A supply</text>
+<text x="80" y="980" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Pi power source.</text>
+<rect x="530" y="930" width="400" height="85" rx="10" fill="white" stroke="#17263c" stroke-width="2"/>
+<text x="550" y="946" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Suitable power / data splitter</text>
+<text x="550" y="980" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Separate supply power and PC data.</text>
+<rect x="1050" y="930" width="300" height="85" rx="10" fill="white" stroke="#2563eb" stroke-width="2"/>
+<text x="1070" y="946" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Windows PC</text>
+<text x="1070" y="980" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">USB keyboard + serial helper.</text>
+<polyline points="400,972 530,972" fill="none" stroke="#c33644" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="530,972 518.4096122534608,977.8875217099279 518.4096122534608,966.1124782900721" fill="#c33644" stroke="#c33644" stroke-width="1"/>
+<text x="427" y="945" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="400" fill="#c33644">POWER</text>
+<polyline points="1050,972 930,972" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="930,972 941.5903877465392,966.1124782900721 941.5903877465392,977.8875217099279" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<polygon points="1050,972 1038.4096122534606,977.8875217099279 1038.4096122534606,966.1124782900721" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<text x="955" y="945" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="400" fill="#2563eb">USB DATA</text>
+<polyline points="730,930 730,860 325,860 325,810" fill="none" stroke="#17263c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="325,810 330.8875217099279,821.5903877465392 319.1124782900721,821.5903877465392" fill="#17263c" stroke="#17263c" stroke-width="1"/>
+<polygon points="730,930 724.1124782900721,918.4096122534608 735.8875217099279,918.4096122534608" fill="#17263c" stroke="#17263c" stroke-width="1"/>
+<text x="463" y="832" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#17263c">Power + gadget data</text>
+<text x="60" y="1053" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="20" font-weight="700" fill="#2563eb">OLED: I2C bus 1 / default address 0x3C / optional 0x3D via config.</text>
+<text x="60" y="1091" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#17263c">Power off before wiring. Confirm 3.3 V OLED support; do not put 5 V on SDA or SCL.</text>
+<text x="60" y="1123" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#17263c">Optional pause button: GPIO 17 (physical pin 11) -- switch -- GND (physical pin 9). Set pause_button_pin = 17.</text>
+<text x="60" y="1155" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#17263c">Reserve GPIO 2 and 3 for I2C. Mount the insulated OLED beneath the camera without covering the lens.</text>
+</svg>

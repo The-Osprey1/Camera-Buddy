@@ -60,6 +60,15 @@ class UnlockSettings:
 
 
 @dataclass
+class DisplaySettings:
+    enabled: bool = True
+    i2c_bus: int = 1
+    address: int = 0x3C
+    # Degrees, rather than luma's quarter-turn numbering.
+    rotate: int = 0
+
+
+@dataclass
 class Settings:
     # Practice mode: write down what it would do, press no keys. Leave on for the first week.
     practice_mode: bool = True
@@ -74,6 +83,7 @@ class Settings:
     presence: PresenceSettings = field(default_factory=PresenceSettings)
     second_person: SecondPersonSettings = field(default_factory=SecondPersonSettings)
     unlock: UnlockSettings = field(default_factory=UnlockSettings)
+    display: DisplaySettings = field(default_factory=DisplaySettings)
 
 
 def _apply(target, values: dict, where: str) -> None:
@@ -103,4 +113,10 @@ def load(path: str | Path | None) -> Settings:
         raise ValueError("second_person.action must be 'warn', 'lock' or 'off'")
     if settings.unlock.mode not in ("practice", "on", "off"):
         raise ValueError("unlock.mode must be 'practice', 'on' or 'off'")
+    if settings.display.i2c_bus < 0:
+        raise ValueError("display.i2c_bus must be nonnegative")
+    if settings.display.address not in (0x3C, 0x3D):
+        raise ValueError("display.address must be 0x3c or 0x3d")
+    if settings.display.rotate not in (0, 180):
+        raise ValueError("display.rotate must be 0 or 180 degrees")
     return settings

@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Callable, Iterator, TextIO
 
 from .config import Settings
+from .display import observed
 from .policy import LockPolicy
 from .pose import Frame
 from .presence import Observation, PresenceTracker, State
@@ -173,6 +174,8 @@ def run_steps(
     plan: list[Step],
     clock: Callable[[], float],
     out: TextIO,
+    display=None,
+    practice: bool = True,
 ) -> dict[str, list[Sample]]:
     """Walks you through the steps and keeps what the camera saw during each one."""
     seen: dict[str, list[Sample]] = {}
@@ -188,12 +191,18 @@ def run_steps(
         return frame
 
     for n, step in enumerate(plan, 1):
+        instruction = {"sit": "SIT AT DESK", "stand": "STAND UP", "leave": "WALK AWAY", "back": "COME BACK/SIT"}[step.key]
         out.write(f"\n{n}/{len(plan)}  {step.say}\n")
         start = clock()
         while (left := step.ready - (clock() - start)) > 0:
             frame = next_frame()
             if frame is not None:
-                tracker.update(frame)  # keeps learning how you sit
+                obs = tracker.update(frame)  # keeps learning how you sit
+                if display is not None:
+                    display.publish(observed(
+                        frame, obs, tracker, practice=practice,
+                        instruction=f"READY: {instruction}", step_seconds=left,
+                    ))
             show(out, f"Starting in {math.ceil(left)}...")
         out.write("\a")  # beep: go
         samples: list[Sample] = []
@@ -203,6 +212,11 @@ def run_steps(
             if frame is None:
                 continue
             obs = tracker.update(frame)
+            if display is not None:
+                display.publish(observed(
+                    frame, obs, tracker, practice=practice,
+                    instruction=instruction, step_seconds=left,
+                ))
             samples.append(sample(tracker, frame, obs))
             show(out, f"Watching... {math.ceil(left)} s left   (now: {LABELS[obs.state]})")
         show(out, "Done.")
@@ -504,6 +518,7 @@ def main(
     out: TextIO = sys.stdout,
     camera: Callable[[str], CameraFeed] = CameraFeed,
     clock: Callable[[], float] = time.monotonic,
+    display=None,
 ) -> int:
     plan = steps(settings)
     out.write(INTRO.format(minutes=math.ceil(sum(s.ready + s.seconds for s in plan) / 60)))
@@ -517,9 +532,11 @@ def main(
                 raise CameraProblem("it didn't start. " + RESEAT_CABLE)
         out.write("Camera ready.\n")
         tracker = PresenceTracker(settings.presence, settings.second_person)
-        seen = run_steps(frames, tracker, plan, clock, out)
+        seen = run_steps(frames, tracker, plan, clock, out, display, settings.practice_mode)
         camera_result = judge_camera(seen, plan)
     except CameraProblem as e:
+        if display is not None:
+            display.camera_error()
         seen = {}
         camera_result = Result(PROBLEM, "Camera", str(e))
     except KeyboardInterrupt:

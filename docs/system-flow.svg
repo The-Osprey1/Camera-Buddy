@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1140" viewBox="0 0 1400 1140" role="img" aria-labelledby="title desc">
+<title id="title">Camera-Buddy system flow</title>
+<desc id="desc">Main camera and existing policy loop at left; independent status-only OLED worker at right. Display errors never feed into keyboard decisions.</desc>
+<rect width="1400" height="1140" fill="#f7fafc"/>
+<text x="60" y="38" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="34" font-weight="700" fill="#17263c">Camera-Buddy / system flow</text>
+<text x="60" y="91" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="400" fill="#526176">Existing control loop, with an independent OLED status display.</text>
+<text x="100" y="155" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="#087f5b">CAMERA + EXISTING POLICIES</text>
+<text x="960" y="155" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="700" fill="#2563eb">OPTIONAL OLED WORKER</text>
+<rect x="100" y="200" width="650" height="92" rx="10" fill="white" stroke="#087f5b" stroke-width="2"/>
+<text x="120" y="216" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Load settings &amp; start service</text>
+<text x="120" y="250" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Start OLED worker, then initialize the camera once.</text>
+<rect x="100" y="340" width="650" height="92" rx="10" fill="white" stroke="#087f5b" stroke-width="2"/>
+<text x="120" y="356" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Read next AI Camera frame</text>
+<text x="120" y="390" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">IMX500 pose results; images only for face checks.</text>
+<rect x="100" y="480" width="650" height="92" rx="10" fill="white" stroke="#087f5b" stroke-width="2"/>
+<text x="120" y="496" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Interpret presence and light</text>
+<text x="120" y="530" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Seated / standing / absent / too dark; detect second person.</text>
+<rect x="100" y="620" width="650" height="110" rx="10" fill="white" stroke="#087f5b" stroke-width="2"/>
+<text x="120" y="636" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Apply existing lock / unlock safeguards</text>
+<text x="120" y="670" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Lock: armed absence and configured second-person rules.</text>
+<text x="120" y="694" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Unlock: eligible return, face checks and live helper gate.</text>
+<rect x="100" y="770" width="650" height="92" rx="10" fill="white" stroke="#087f5b" stroke-width="2"/>
+<text x="120" y="786" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Practice log or eligible live USB action</text>
+<text x="120" y="820" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Windows+L or PIN typing; paused / unsafe states suppress actions.</text>
+<rect x="100" y="910" width="650" height="92" rx="10" fill="white" stroke="#2563eb" stroke-width="2"/>
+<text x="120" y="926" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Publish metadata-only status</text>
+<text x="120" y="960" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Observation, counts, timers and short result labels; no secrets.</text>
+<polyline points="425,292 425,340" fill="none" stroke="#087f5b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="425,340 419.1124782900721,328.40961225346075 430.8875217099279,328.40961225346075" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<polyline points="425,432 425,480" fill="none" stroke="#087f5b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="425,480 419.1124782900721,468.40961225346075 430.8875217099279,468.40961225346075" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<polyline points="425,572 425,620" fill="none" stroke="#087f5b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="425,620 419.1124782900721,608.4096122534608 430.8875217099279,608.4096122534608" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<polyline points="425,730 425,770" fill="none" stroke="#087f5b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="425,770 419.1124782900721,758.4096122534608 430.8875217099279,758.4096122534608" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<polyline points="425,862 425,910" fill="none" stroke="#087f5b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="425,910 419.1124782900721,898.4096122534608 430.8875217099279,898.4096122534608" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<polyline points="100,956 50,956 50,386 100,386" fill="none" stroke="#087f5b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="100,386 88.40961225346072,391.8875217099279 88.40961225346072,380.1124782900721" fill="#087f5b" stroke="#087f5b" stroke-width="1"/>
+<text x="100" y="1029" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="19" font-weight="400" fill="#526176">Repeat for each processed camera frame.</text>
+<text x="100" y="1064" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Helper lock status + pause input feed the existing policies.</text>
+<text x="100" y="1093" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Camera exceptions show CAM ERROR, then the service restarts.</text>
+<rect x="960" y="200" width="360" height="92" rx="10" fill="white" stroke="#2563eb" stroke-width="2"/>
+<text x="980" y="216" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Start display worker</text>
+<text x="980" y="250" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Background thread; never owns policy.</text>
+<polyline points="750,246 960,246" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="960,246 948.4096122534608,251.88752170992788 948.4096122534608,240.11247829007212" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<text x="827" y="219" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="400" fill="#2563eb">start</text>
+<rect x="960" y="345" width="360" height="92" rx="10" fill="white" stroke="#2563eb" stroke-width="2"/>
+<text x="980" y="361" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Keep latest snapshot</text>
+<text x="980" y="395" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">No queue backlog or camera images.</text>
+<polyline points="1140,292 1140,345" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="1140,345 1134.1124782900722,333.40961225346075 1145.8875217099278,333.40961225346075" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<polyline points="750,956 880,956 880,391 960,391" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="960,391 948.4096122534608,396.8875217099279 948.4096122534608,385.1124782900721" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<text x="776" y="928" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="17" font-weight="400" fill="#2563eb">publish</text>
+<rect x="960" y="480" width="360" height="110" rx="10" fill="white" stroke="#2563eb" stroke-width="2"/>
+<text x="980" y="496" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Render current status</text>
+<text x="980" y="530" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Max 4 Hz; latest snapshot only.</text>
+<text x="980" y="554" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">15 s stale =&gt; CAMERA WAIT.</text>
+<polyline points="1140,437 1140,480" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="1140,480 1134.1124782900722,468.40961225346075 1145.8875217099278,468.40961225346075" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<polyline points="1140,590 1140,630" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="1140,630 1134.1124782900722,618.4096122534608 1145.8875217099278,618.4096122534608" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<polygon points="1140,630 1310,690 1140,750 970,690" fill="white" stroke="#2563eb" stroke-width="2"/>
+<text x="1140" y="678" dominant-baseline="hanging" text-anchor="middle" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">I2C available?</text>
+<rect x="960" y="790" width="360" height="80" rx="10" fill="white" stroke="#2563eb" stroke-width="2"/>
+<text x="980" y="806" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Show OLED status</text>
+<text x="980" y="840" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Detection / alerts / face feedback.</text>
+<polyline points="1140,750 1140,790" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="1140,790 1134.1124782900722,778.4096122534608 1145.8875217099278,778.4096122534608" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<text x="1158" y="758" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="400" fill="#2563eb">yes</text>
+<polyline points="960,830 920,830 920,535 960,535" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="960,535 948.4096122534608,540.8875217099279 948.4096122534608,529.1124782900721" fill="#2563eb" stroke="#2563eb" stroke-width="1"/>
+<rect x="960" y="910" width="360" height="92" rx="10" fill="white" stroke="#ad650d" stroke-width="2"/>
+<text x="980" y="926" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#17263c">Retry in 30 seconds</text>
+<text x="980" y="960" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#526176">Main camera and keyboard continue.</text>
+<polyline points="1310,690 1360,690 1360,956 1320,956" fill="none" stroke="#ad650d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 7"/>
+<polygon points="1320,956 1331.5903877465394,950.1124782900721 1331.5903877465394,961.8875217099279" fill="#ad650d" stroke="#ad650d" stroke-width="1"/>
+<text x="1286" y="737" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="400" fill="#ad650d">no / error</text>
+<polyline points="1140,1002 1140,1034 1380,1034 1380,535 1320,535" fill="none" stroke="#ad650d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 7"/>
+<polygon points="1320,535 1331.5903877465394,529.1124782900721 1331.5903877465394,540.8875217099279" fill="#ad650d" stroke="#ad650d" stroke-width="1"/>
+<text x="960" y="1085" dominant-baseline="hanging" text-anchor="start" font-family="Segoe UI, DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="400" fill="#2563eb">Display failures affect the screen only.</text>
+</svg>
