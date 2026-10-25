@@ -14,6 +14,14 @@ pause_seconds = 3600
 # Raspberry Pi pin (BCM numbering) for an optional pause button wired to ground. 0 = no button.
 pause_button_pin = 0
 
+[display]
+# Optional 128x64 SSD1306 OLED. Automatically connects when attached; missing
+# hardware never stops the camera. Set false to disable (also frees BCM 2/3).
+enabled = true
+i2c_bus = 1
+address = 0x3c # Some modules use 0x3d instead.
+rotate = 0 # Set 180 if mounted upside down beneath the camera.
+
 [presence]
 # Your body must be out of view this long before the PC locks.
 away_seconds = 5.0
