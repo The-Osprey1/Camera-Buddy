@@ -76,6 +76,9 @@ The Pi can do steps 1 and 2 by itself from the SD card:
 
 ## Optional OLED beneath the camera
 
+See the [wiring diagram and pin-by-pin guide](docs/wiring.md) and the
+[application flowchart and integration guide](docs/system-flow.md).
+
 Camera-Buddy supports a **0.96-inch, 128x64 SSD1306 OLED with four I2C pins**.
 Mount it just beneath the camera, facing you, without covering the lens or putting
 strain on the camera ribbon. Keep the back of the display insulated from exposed

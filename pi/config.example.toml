@@ -16,7 +16,8 @@ pause_button_pin = 0
 
 [display]
 # Optional 128x64 SSD1306 OLED. Automatically connects when attached; missing
-# hardware never stops the camera. Set false to disable (also frees BCM 2/3).
+# hardware never stops the camera. Set false to disable display access.
+# The installer leaves I2C enabled; reserve BCM 2/3 for its data/clock signals.
 enabled = true
 i2c_bus = 1
 address = 0x3c # Some modules use 0x3d instead.

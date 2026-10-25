@@ -565,3 +565,64 @@ def test_oled_test_cli_bypasses_camera_and_disabled_setting(monkeypatch):
         cli.main()
     assert exc.value.code == 0
     assert device.closed == [True]
+
+
+@pytest.mark.parametrize("practice", [True, False])
+def test_integrated_frame_pipeline_matches_without_oled_for_all_hardware_states(tmp_path, practice):
+    """Drive presence, face checks, keyboard and real display mailbox together.
+
+    Only the physical I2C backend is replaced. Hardware absence/write failures
+    must preserve the application's actual practice and live decision sequences.
+    """
+    from fake_faces import IMAGE
+
+    results = []
+    for profile in ("none", "disabled", "connected", "absent", "write_error"):
+        folder = tmp_path / profile
+        folder.mkdir()
+        settings, engine, fp = desk(
+            folder, practice_mode=practice, unlock=config.UnlockSettings(mode="on"),
+        )
+        now = [0.0]
+        pc = LivePC("2468")
+        keyboard = PracticeKeyboard() if practice else pc
+        opened = []
+        backend = FakeBackend(None)
+        backend.fail = profile == "write_error"
+
+        def connect(settings):
+            opened.append(settings)
+            if profile == "absent":
+                raise OSError("no OLED attached")
+            return backend
+
+        oled = None if profile == "none" else Display(
+            config.DisplaySettings(enabled=profile != "disabled"),
+            clock=lambda: now[0], backend=connect,
+        )
+        app = DeskPresence(
+            settings, keyboard, pc, EventLog(settings.event_log), clock=lambda: now[0],
+            face_engine=engine, faceprint=fp, sleep=lambda _: None, display=oled,
+        )
+        app.receive_pin("2468")
+        for tick in range(160):
+            now[0] = tick / 10
+            bodies = [person()] if now[0] < 2 or now[0] >= 10 else []
+            sample = frame(now[0], bodies)
+            if app.wants_images:
+                sample.image = IMAGE
+            app.handle(sample)
+            if oled is not None:
+                oled._tick(now[0])
+        results.append((keyboard.would_have_pressed if practice else pc.pressed, pc.sent))
+        if oled is not None:
+            assert "2468" not in repr(oled._latest)
+            assert len(opened) == (0 if profile == "disabled" else 1)
+            oled._dispose()
+    assert all(result == results[0] for result in results)
+    if practice:
+        assert results[0][0] == ["Windows+L"]
+        assert protocol.WOULD_LOCK in results[0][1] and protocol.WOULD_UNLOCK in results[0][1]
+    else:
+        assert results[0][0] == ["Windows+L", "Ctrl", "Ctrl", "PIN"]
+        assert protocol.LOCKING in results[0][1] and protocol.UNLOCKING in results[0][1]
