@@ -104,19 +104,29 @@ including with an older configuration file that has no `[display]` section.
 If it is absent or unplugged, the camera and locking continue; the display worker
 retries every 30 seconds.
 
-The fixed screen shows:
+The fixed screen uses a large, left-aligned detection label, a quiet mode/PC
+header, one message strip, aligned diagnostic columns, and a face-feedback footer.
+Warnings and pause states use an inverted strip so they stand out without flashing.
+The screen shows:
 
 - A large **SEATED**, **STANDING**, **NO PERSON**, or **TOO DARK** label.
 - **PRACTICE** or **LIVE**, and the PC helper's lock status (`?` means unknown).
 - People counted after duplicate detections are merged, estimated lux (`?` if
   unavailable), and how many of the main person's seven head/shoulder points are
-  visible. These are diagnostic measurements, not a recognition certainty score.
+  visible. The compact columns are **P** (people), **L** (lux), and **KP** (visible
+  keypoints out of seven). These are diagnostic measurements, not a recognition
+  certainty score.
 - Pause time, low-light/second-person warnings, or the remaining absence countdown
-  when the lock policy is armed. Practice countdowns say **WOULD LOCK**.
-- Face-unlock checks, match progress, and results. **TEST** / **WOULD UNLOCK** means
-  face practice, even if presence locking is live. **FACE UNAVAILABLE** means no
-  face is enrolled, models are missing, or a face check failed. **MANUAL UNLOCK
-  NEEDED** means unlock Windows yourself before automatic unlock can resume.
+  when the lock policy is armed. Practice countdowns say **TEST LOCK IN**.
+- Face-unlock checks, match progress, and results. The five-segment indicator
+  shows progress through the required matching checks, not identity confidence.
+  **TEST** / **WOULD UNLOCK** means
+  face practice, even if presence locking is live. The minimum match duration
+  still applies after the segment indicator fills. **FACE NOT READY** means no
+  face is enrolled, models are missing, or a face check failed. **UNLOCK PC
+  MANUALLY** means unlock Windows yourself before automatic unlock can resume.
+
+![OLED layout: detection, lock countdown, low light, pause, second-person warning and manual unlock](docs/oled-layout.png)
 
 Pause and current warnings take priority over brief action messages, which last
 three seconds. **STARTING** appears during camera/model startup. **CAMERA WAIT**

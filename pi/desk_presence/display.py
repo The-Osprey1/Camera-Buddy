@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 import threading
 import time
 from dataclasses import dataclass, replace
@@ -56,7 +57,7 @@ def observed(frame, obs, tracker, *, practice=True, **status) -> Snapshot:
 
 
 def lines(snapshot: Snapshot, now: float) -> tuple[str, ...]:
-    """Pure six-row layout: header, large title, then four small diagnostic rows."""
+    """Full text status, before compact labels and visual grouping are applied."""
     s = snapshot
     pc = {"UNLOCKED": "OPEN", "LOCKED": "LOCKED", "LOCK_SCREEN": "LOCKED"}.get(s.pc_status, "?")
     header = f"{'PRACTICE' if s.practice else 'LIVE'} PC:{pc}"
@@ -126,29 +127,155 @@ _FONT = {
 }
 
 
+@dataclass(frozen=True)
+class Layout:
+    """Five visual bands with a stable reading order and a 4-pixel side inset."""
+    mode: str
+    pc: str
+    title: str
+    message: str
+    footer: str
+    metrics: tuple[str, str, str] | None = None
+    detail: str = ""
+    emphasis: bool = False
+    progress: tuple[int, int] | None = None
+
+
+_FACE_LABELS = {
+    "FACE UNAVAILABLE": "FACE NOT READY",
+    "FACE PRACTICE READY": "FACE: PRACTICE",
+    "FACE READY": "FACE: READY",
+    "FACE OFF": "FACE: OFF",
+    "FACE NEED PC HELPER": "START PC HELPER",
+    "FACE NEED PIN": "PIN NEEDED ON PC",
+    "MANUAL UNLOCK NEEDED": "UNLOCK PC MANUALLY",
+    "FACE TRY NEXT RETURN": "TRY ON NEXT RETURN",
+    "FACE NO MATCH": "FACE: NO MATCH",
+    "FACE TOO DARK": "FACE: TOO DARK",
+    "FACE OFF BODY": "ALIGN FACE WITH BODY",
+    "FACE NOT FOUND": "LOOK AT CAMERA",
+    "FACE PAUSED": "FACE CHECKS PAUSED",
+    "FACE WAIT FOR LIGHT": "CHECKS NEED LIGHT",
+    "FACE WAIT ONE PERSON": "UNLOCK BLOCKED",
+    "TEST CHECKING": "TEST: CHECKING FACE",
+    "FACE CHECKING": "CHECKING FACE",
+    "WOULD UNLOCK": "TEST: WOULD UNLOCK",
+    "UNLOCKING": "UNLOCKING PC",
+    "UNLOCKED": "PC UNLOCKED",
+}
+
+
+def layout(snapshot: Snapshot, now: float) -> Layout:
+    """Pure display view: shorten labels without losing their diagnostic meaning."""
+    s = snapshot
+    _, title, _, _, action, face = lines(s, now)
+    mode = "PRACTICE" if s.practice else "LIVE"
+    pc = {"UNLOCKED": "PC:OPEN", "LOCKED": "PC:LOCKED", "LOCK_SCREEN": "PC:LOCKED"}.get(s.pc_status, "PC:?")
+    if s.phase == "test":
+        return Layout("OLED TEST", "128X64", "SSD1306", "DISPLAY CHECK",
+                      "CHECK ALL FOUR EDGES", detail="0123456789 0X3C/0X3D")
+    if s.phase == "starting":
+        return Layout(mode, pc, title, "LOADING CAMERA", "ALLOW UP TO 150S")
+    if s.phase == "camera_error":
+        return Layout(mode, "PC:?", title, "CHECK CAMERA CABLE", "SEE SERVICE LOG", emphasis=True)
+    if s.frame_time is None or now - s.frame_time >= STALE_SECONDS:
+        return Layout(mode, "PC:?", title, "NO RECENT RESULTS", "CHECK CAMERA AND LOG", emphasis=True)
+
+    if action == "WATCHING":
+        action = {
+            State.SEATED: "MONITORING", State.STOOD_UP: "PRESENCE IN VIEW",
+            State.AWAY: "NO LOCK PENDING",
+        }.get(s.state, action)
+    elif action == "LOW LIGHT: NO ACTION":
+        action = "ADD LIGHT TO RESUME"
+    elif action == "SECOND PERSON IN VIEW":
+        action = "SECOND PERSON"
+    elif action.startswith("WOULD LOCK IN "):
+        action = action.replace("WOULD LOCK IN ", "TEST LOCK IN ")
+
+    # An alert strip must name the problem, rather than highlighting a routine
+    # monitoring label while the useful recovery instruction sits elsewhere.
+    paused = s.pause_until is not None and now < s.pause_until
+    if not paused and s.state is not State.TOO_DARK and not s.second_person and not s.instruction:
+        if face == "MANUAL UNLOCK NEEDED":
+            action = "AUTO UNLOCK PAUSED"
+        elif face == "FACE REFUSED":
+            action = "FACE REFUSED"
+        elif face == "UNLOCK FAILED":
+            action = "UNLOCK FAILED"
+
+    # Keep each measurement in its own stable column as the digits change.
+    people = "?" if s.people is None else str(max(0, min(s.people, 99)))
+    lux = "?" if s.lux is None or not math.isfinite(s.lux) else str(min(99999, max(0, round(s.lux))))
+    points = "?" if s.upper_points is None else str(max(0, min(s.upper_points, 7)))
+    metrics = (f"P{people}", f"L{lux}", f"KP{points}/7")
+    footer = _FACE_LABELS.get(face, face)
+    if face in ("FACE REFUSED", "UNLOCK FAILED") and not s.instruction:
+        footer = "UNLOCK PC MANUALLY" if s.face == "MANUAL UNLOCK NEEDED" or face == "UNLOCK FAILED" else "TRY ON NEXT RETURN"
+    progress = None
+    match = re.fullmatch(r"(TEST|FACE) MATCH (\d+)/(\d+)", face)
+    if match:
+        count, target = int(match[2]), int(match[3])
+        if 0 < target <= 99 and 0 <= count <= 99:
+            count = min(count, target)
+            footer = f"{'TEST FACE' if match[1] == 'TEST' else 'FACE'} {count}/{target}"
+            if text_width(footer) > 88:
+                footer = f"{match[1]} {count}/{target}"
+            progress = count, target
+    emphasis = (paused or s.state is State.TOO_DARK or s.second_person
+                or action == "LOCK FAILED" or face in ("FACE REFUSED", "UNLOCK FAILED", "MANUAL UNLOCK NEEDED"))
+    return Layout(mode, pc, title, action, footer, metrics=metrics,
+                  emphasis=emphasis, progress=progress)
+
+
+def text_width(text: str, scale: int = 1) -> int:
+    return max(0, len(text) * (5 * scale + 1) - 1)
+
+
+def _text(draw, text, x, y, *, scale=1, fill=1, width=120):
+    """Pixel-aligned bitmap type. Long configured values end with an ellipsis."""
+    advance = 5 * scale + 1
+    capacity = (width + 1) // advance
+    text = text.upper()
+    if len(text) > capacity:
+        text = text[:max(0, capacity - 3)] + "." * min(3, capacity)
+    for col, char in enumerate(text):
+        bitmap = bytes.fromhex(_FONT.get(char, _FONT["?"]))
+        for row, bits in enumerate(bitmap):
+            for column in range(5):
+                if bits & (1 << (4 - column)):
+                    px, py = x + col * advance + column * scale, y + row * scale
+                    draw.rectangle((px, py, px + scale - 1, py + scale - 1), fill=fill)
+
+
 def render(snapshot: Snapshot, now: float):
     """Return a new monochrome 128x64 Pillow image; no hardware side effects."""
     from PIL import Image, ImageDraw
 
     image = Image.new("1", (128, 64))
     draw = ImageDraw.Draw(image)
-    for row, text in enumerate(lines(snapshot, now)):
-        scale = 2 if row == 1 else 1
-        advance = 5 * scale + 1
-        text = text.upper()[:128 // advance]
-        x0 = (128 - (len(text) * advance - 1)) // 2 if row == 1 else 0
-        y0 = 12 if row == 1 else (0 if row == 0 else 32 + (row - 2) * 8)
-        if snapshot.phase == "test" and row != 1:
-            x0 = 2
-            if row == 0:
-                y0 = 1
-        for col, char in enumerate(text):
-            bitmap = bytes.fromhex(_FONT.get(char, _FONT["?"]))
-            for y, bits in enumerate(bitmap):
-                for x in range(5):
-                    if bits & (1 << (4 - x)):
-                        px, py = x0 + col * advance + x * scale, y0 + y * scale
-                        draw.rectangle((px, py, px + scale - 1, py + scale - 1), fill=1)
+    view = layout(snapshot, now)
+    _text(draw, view.mode, 4, 2)
+    _text(draw, view.pc, 124 - text_width(view.pc), 2)
+    draw.line((4, 12, 123, 12), fill=1)
+    _text(draw, view.title, 4, 18, scale=2)
+    if view.emphasis:
+        draw.rectangle((2, 34, 125, 43), fill=1)
+    _text(draw, view.message, 4, 35, fill=0 if view.emphasis else 1)
+    if view.metrics is not None:
+        for x, value, width in zip((4, 32, 84), view.metrics, (20, 44, 40)):
+            _text(draw, value, x, 46, width=width)
+        draw.line((25, 46, 25, 52), fill=1)
+        draw.line((77, 46, 77, 52), fill=1)
+    elif view.detail:
+        _text(draw, view.detail, 4, 46)
+    _text(draw, view.footer, 4, 56, width=88 if view.progress else 120)
+    if view.progress:
+        count, target = view.progress
+        for segment in range(5):
+            x = 95 + segment * 6
+            draw.rectangle((x, 57, x + 4, 61), outline=1,
+                           fill=1 if (segment + 1) * target <= count * 5 else 0)
     if snapshot.phase == "test":
         draw.rectangle((0, 0, 127, 63), outline=1)
     return image

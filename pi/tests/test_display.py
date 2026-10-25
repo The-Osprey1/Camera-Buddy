@@ -12,7 +12,7 @@ import pytest
 
 from desk_presence import check, config, display, protocol
 from desk_presence.app import DeskPresence
-from desk_presence.display import Display, Snapshot, lines, observed, render
+from desk_presence.display import Display, Snapshot, layout, lines, observed, render, text_width
 from desk_presence.events import EventLog
 from desk_presence.keyboard import PracticeKeyboard
 from desk_presence.presence import PresenceTracker, State
@@ -94,11 +94,21 @@ def test_render_all_screens_fit_without_truncation():
     )]
     samples += [watching(second_person=True), watching(pause_until=3610),
                 watching(lock_seconds=4.2, practice=False),
+                watching(lock_seconds=4.2), watching(face="TEST MATCH 3/5"),
+                watching(face="TEST MATCH 99/99"), watching(face="FACE MATCH 5/5"),
+                watching(people=99, lux=99999),
                 watching(instruction="READY: COME BACK/SIT", step_seconds=5)]
     for s in samples:
-        for index, text in enumerate(lines(s, 16)):
-            advance = 11 if index == 1 else 6
-            assert len(text) * advance - 1 <= 128, text
+        view = layout(s, 16)
+        # Check the actual composed screen, including the two aligned headers,
+        # metric columns and space reserved for match progress.
+        assert 4 + text_width(view.mode) + 12 <= 124 - text_width(view.pc)
+        assert text_width(view.title, scale=2) <= 120
+        assert text_width(view.message) <= 120, view.message
+        assert text_width(view.footer) <= (88 if view.progress else 120), view.footer
+        assert text_width(view.detail) <= 120
+        if view.metrics:
+            assert all(text_width(value) <= width for value, width in zip(view.metrics, (20, 44, 40)))
         image = render(s, 16)
         assert image.size == (128, 64) and image.mode == "1"
         assert image.getbbox() is not None
@@ -107,6 +117,50 @@ def test_render_all_screens_fit_without_truncation():
             assert image.crop((0, 63, 128, 64)).getbbox() is None
     test_image = render(Snapshot(phase="test"), 0)
     assert all(test_image.getpixel(p) for p in ((0, 0), (127, 0), (0, 63), (127, 63)))
+
+
+def test_redesigned_layout_prioritizes_recovery_and_preserves_measurements():
+    normal = layout(watching(), 10)
+    assert normal.title == "SEATED" and normal.message == "MONITORING"
+    assert normal.metrics == ("P1", "L100", "KP7/7")
+    assert not normal.emphasis
+    manual = layout(watching(face="MANUAL UNLOCK NEEDED"), 10)
+    assert manual.message == "AUTO UNLOCK PAUSED" and manual.footer == "UNLOCK PC MANUALLY"
+    assert manual.emphasis
+    refused = layout(watching(face_result="FACE REFUSED", face_until=13,
+                              face="FACE TRY NEXT RETURN"), 10)
+    assert refused.message == "FACE REFUSED" and refused.footer == "TRY ON NEXT RETURN"
+    paused = layout(watching(pause_until=70, face="MANUAL UNLOCK NEEDED"), 10)
+    assert paused.message == "PAUSED 1 MIN" and paused.footer == "FACE CHECKS PAUSED"
+    dark = layout(watching(state=State.TOO_DARK), 10)
+    assert dark.message == "ADD LIGHT TO RESUME" and dark.emphasis
+    stale = layout(watching(pc_status=protocol.UNLOCKED), 25)
+    assert stale.title == "CAMERA WAIT" and stale.metrics is None and stale.pc == "PC:?"
+
+
+def test_match_segments_report_check_progress_without_animation():
+    s = watching(face="TEST MATCH 3/5")
+    view = layout(s, 10)
+    assert view.footer == "TEST FACE 3/5" and view.progress == (3, 5)
+    image = render(s, 10)
+    centers = [(97 + segment * 6, 59) for segment in range(5)]
+    assert [bool(image.getpixel(p)) for p in centers] == [True, True, True, False, False]
+    assert render(s, 11).tobytes() == image.tobytes()
+    assert layout(watching(face="FACE MATCH 9/5"), 10).progress == (5, 5)
+    assert layout(watching(face="TEST MATCH 99/99"), 10).footer == "TEST 99/99"
+    assert layout(watching(face="FACE MATCH 1/0"), 10).progress is None
+
+
+def test_pixel_insets_and_emphasis_keep_text_in_bounds():
+    for s in (watching(), watching(second_person=True), Snapshot(), Snapshot(phase="camera_error")):
+        image = render(s, 10)
+        assert image.crop((0, 0, 2, 64)).getbbox() is None
+        assert image.crop((126, 0, 128, 64)).getbbox() is None
+        assert image.crop((0, 63, 128, 64)).getbbox() is None
+    warning = render(watching(second_person=True), 10)
+    normal = render(watching(), 10)
+    assert warning.getpixel((3, 34))
+    assert not normal.getpixel((3, 34))
 
 
 def test_import_does_not_need_pi_libraries_or_pillow():
