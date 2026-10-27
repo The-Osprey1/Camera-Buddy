@@ -55,8 +55,9 @@ LONG_IDLE = 120.0
 
 LOG_NAME = "helper.log"
 SHORTCUT_NAME = "Desk presence helper.lnk"
-# Marks a running helper, and lets a newer copy ask it to stop.
-SIGNAL_NAME = "Local\\DeskPresenceHelper"
+# Marks a running helper, and lets a newer copy ask it to stop. The tests use a name of their
+# own, so running them never stops the helper you're using.
+SIGNAL_NAME = os.environ.get("DESK_HELPER_SIGNAL", "Local\\DeskPresenceHelper")
 
 TO_PI = {"LOCKED", "LOCK_SCREEN", "UNLOCKED", "PAUSE"}
 FROM_PI = {
