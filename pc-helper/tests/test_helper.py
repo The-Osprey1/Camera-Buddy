@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -247,32 +248,39 @@ def test_windows_readings():
 
 @windows_only
 def test_one_copy_runs_in_the_background_until_uninstalled(tmp_path):
-    # What double-clicking start-helper.cmd does, with a pretend Startup folder.
+    # What double-clicking start-helper.cmd does, with a pretend Startup folder and a signal of
+    # its own, so a helper you're running on this PC keeps running.
     shutil.copy(HELPER, tmp_path)
     startup = tmp_path / "Startup"
     link = startup / desk_helper.SHORTCUT_NAME
+    env = dict(os.environ, DESK_HELPER_SIGNAL=f"Local\\DeskPresenceHelperTest{os.getpid()}")
+    yours = desk_helper.StopSignal()  # the real signal, shared with your helper if it's running
 
     def call(function):
         code = f"import sys, pathlib, desk_helper; sys.exit(desk_helper.{function}(startup=pathlib.Path(r'{startup}')))"
-        done = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, capture_output=True, text=True, timeout=90)
+        done = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=90)
         print(done.stdout, done.stderr)
         return done
 
     try:
         installed = call("install")
         assert installed.returncode == 0
-        assert "Waiting for the Pi" in installed.stdout
+        # Lost the Pi: your helper has the Pi's port. Connected: the Pi is plugged in and nothing else has it.
+        assert any(said in installed.stdout for said in ("Waiting for the Pi", "Lost the Pi", "Connected to the Pi"))
         shortcut = f"(New-Object -ComObject WScript.Shell).CreateShortcut('{link}').TargetPath"
         target = subprocess.run(["powershell.exe", "-NoProfile", "-Command", shortcut], capture_output=True, text=True)
         assert Path(target.stdout.strip()).name.lower() == "pythonw.exe"
 
-        second = subprocess.run([sys.executable, "desk_helper.py"], cwd=tmp_path, capture_output=True, text=True, timeout=30)
+        second = subprocess.run([sys.executable, "desk_helper.py"], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30)
         assert second.returncode == 0 and "already running" in second.stdout
 
         again = call("install")
         assert again.returncode == 0 and "Stopped the copy that was already running" in again.stdout
     finally:
         removed = call("uninstall")
+        left_alone = not yours.is_set()
+        desk_helper.kernel32.CloseHandle(yours.handle)
+    assert left_alone, "the helper running on this PC was asked to stop"
     assert removed.returncode == 0 and "Stopped it." in removed.stdout
     assert not link.exists()
     log = (tmp_path / "helper.log").read_text(encoding="utf-8")
