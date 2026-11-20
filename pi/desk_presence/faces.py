@@ -115,6 +115,8 @@ def save_faceprint(path: str | Path, faceprint: Faceprint) -> None:
     tmp = p.with_suffix(".tmp.npz")
     np.savez(tmp, vectors=faceprint.vectors.astype(np.float32), widths=faceprint.widths.astype(np.float32))
     os.chmod(tmp, 0o600)
+    with open(tmp, "rb") as f:  # on the card before the swap, in case the power goes
+        os.fsync(f.fileno())
     os.replace(tmp, p)
 
 

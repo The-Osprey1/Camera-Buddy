@@ -196,6 +196,10 @@ Its log is `helper.log` in the same folder: every message from the Pi, when the 
 
 To run it in a window instead: `py desk_helper.py`. To stop it and take it out of your Startup apps: `py desk_helper.py --uninstall` (or turn it off in Task Manager, under Startup apps).
 
+## The PC doesn't see the Pi
+
+If the helper keeps waiting and no COM port appears, follow [the step-by-step check](docs/pi-not-showing-up.md). It starts with the cable and the Pi's lights and ends with the card.
+
 ## Practice week, then going live
 
 Each day, check what it would have done. On the PC, `helper.log` lists each "would have locked now" with how long before it you last used the keyboard or mouse (a few seconds means you were still there) and what the camera saw in the minute before. On the Pi:

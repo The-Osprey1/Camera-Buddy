@@ -31,8 +31,21 @@ fi
 
 echo "Copying the program to /opt/desk-presence..."
 mkdir -p /opt/desk-presence
-rm -rf /opt/desk-presence/desk_presence /opt/desk-presence/setup
-cp -r "$HERE/desk_presence" "$HERE/setup" /opt/desk-presence/
+# Copy each folder next to the old one, write it to the card, then swap it in.
+# If the power goes during an update, the Pi keeps a complete old or new copy
+# (the USB keyboard script lives in setup/, so a half copy would leave the PC
+# with no keyboard).
+for part in desk_presence setup; do
+    rm -rf "/opt/desk-presence/$part.new" "/opt/desk-presence/$part.old"
+    cp -r "$HERE/$part" "/opt/desk-presence/$part.new"
+done
+sync
+for part in desk_presence setup; do
+    [ -e "/opt/desk-presence/$part" ] && mv "/opt/desk-presence/$part" "/opt/desk-presence/$part.old"
+    mv "/opt/desk-presence/$part.new" "/opt/desk-presence/$part"
+done
+rm -rf /opt/desk-presence/desk_presence.old /opt/desk-presence/setup.old
+sync
 chmod +x /opt/desk-presence/setup/*.sh /opt/desk-presence/setup/desk-check /opt/desk-presence/setup/desk-face
 # desk-check or desk-face may be the one running this (through update.sh), so swap
 # them in one step instead of writing over them.
@@ -72,6 +85,12 @@ if [ ! -f "$USER_HOME/desk-presence/config.toml" ]; then
 fi
 chown -R "$USER_NAME:" "$USER_HOME/desk-presence"
 
+echo "Keeping logs across restarts..."
+mkdir -p /etc/systemd/journald.conf.d /var/log/journal
+cp "$HERE/setup/journald-desk-presence.conf" /etc/systemd/journald.conf.d/desk-presence.conf
+systemd-tmpfiles --create --prefix /var/log/journal >/dev/null 2>&1 || true
+systemctl restart systemd-journald || true
+
 echo "Installing start-at-boot services..."
 cp "$HERE/setup/desk-presence-gadget.service" /etc/systemd/system/
 sed -e "s|__USER__|$USER_NAME|" -e "s|__HOME__|$USER_HOME|" \
@@ -80,6 +99,11 @@ systemctl daemon-reload
 systemctl enable desk-presence-gadget.service desk-presence.service
 # If it's already running, switch it over to the new copy.
 systemctl try-restart desk-presence.service
+# Reconnect the USB link now if it isn't up (does nothing to a working link).
+if [ -d /sys/class/udc ] && [ -n "$(ls /sys/class/udc 2>/dev/null)" ]; then
+    /opt/desk-presence/setup/usb-gadget.sh >/dev/null 2>&1 || true
+fi
+sync
 
 echo
 if [ "$RESTART_NEEDED" = yes ]; then
