@@ -1,11 +1,15 @@
 [Unit]
 Description=Desk presence: USB keyboard and helper link
-After=systemd-modules-load.service
+After=systemd-modules-load.service sys-kernel-config.mount
+# Keep trying if the USB-C controller is slow to appear after a power cut.
+StartLimitIntervalSec=0
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/opt/desk-presence/setup/usb-gadget.sh
+Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
